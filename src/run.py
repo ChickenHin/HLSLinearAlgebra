@@ -4,13 +4,15 @@ import os
 part = 'xc7z020clg400-1'
 clock = "10"
 
-# cwd = os.getcwd()+'/'
-cwd = "/workspaces/HLSLinearAlgebra/src/"
+cwd = os.getcwd()+'/'
+# cwd = "/workspaces/HLSLinearAlgebra/src/"
 workspace_path = cwd + "vitis_workspace/"
 
 # Initialize session
 client = vitis.create_client()
 client.set_workspace(path=workspace_path)
+
+vitis_version = "2024.2"
 
 component_name = "floatX"
 
@@ -94,7 +96,10 @@ cfg_file.set_value(section='hls', key='flow_target',
 
 # Run flow steps
 comp = client.get_component(name=component_name)
-comp.execute(operation='C_SIMULATION')
+if vitis_version == '2024.2':
+    comp.run(operation='CSIMULATION')
+else:   
+    comp.execute(operation='CSIMULATION')
 # comp.execute(operation='SYNTHESIS')
 # comp.execute(operation='CO_SIMULATION')
 # comp.execute(operation='IMPLEMENTATION')
