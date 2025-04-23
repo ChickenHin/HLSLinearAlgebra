@@ -21,6 +21,13 @@ namespace linalg
             //*this = Zero();
         }
 
+        Mat(const Type _data[_rows * _cols])
+        {
+            for (int r = 0; r < _rows; r++)
+                for (int c = 0; c < _cols; c++)
+                    data[r][c] = _data[r * _cols + c];
+        }
+
         // Copy constructor
         Mat(const Mat &other)
         {
@@ -76,28 +83,6 @@ namespace linalg
             return result;
         }
 
-        // Scalar division
-        template <typename S, typename = std::enable_if_t<std::is_arithmetic_v<S>>>
-        Mat operator/(S scalar) const
-        {
-            Mat result;
-            for (int r = 0; r < _rows; r++)
-                for (int c = 0; c < _cols; c++)
-                    result.data[r][c] = data[r][c] / scalar;
-            return result;
-        }
-
-        // Scalar multiplication
-        template <typename S, typename = std::enable_if_t<std::is_arithmetic_v<S>>>
-        Mat operator*(S scalar) const
-        {
-            Mat result;
-            for (int r = 0; r < _rows; r++)
-                for (int c = 0; c < _cols; c++)
-                    result.data[r][c] = data[r][c] * scalar;
-            return result;
-        }
-
         // Matrix multiplication
         template <typename Type2, int __rows, int __cols>
         Mat<Type, _rows, __cols> operator*(const Mat<Type2, __rows, __cols> &rhs) const
@@ -113,6 +98,42 @@ namespace linalg
                     {
                         result(r, c) += data[r][k] * rhs(k, c);
                     }
+                }
+            }
+            return result;
+        }
+
+        // Scalar division
+        template <typename S> //, typename = std::enable_if_t<std::is_arithmetic_v<S>>>
+        Mat operator/(S scalar) const
+        {
+            Mat result;
+            for (int r = 0; r < _rows; r++)
+                for (int c = 0; c < _cols; c++)
+                    result.data[r][c] = data[r][c] / scalar;
+            return result;
+        }
+
+        // Scalar multiplication
+        template <typename S> //, typename = std::enable_if_t<std::is_arithmetic_v<S>>>
+        Mat operator*(S scalar) const
+        {
+            Mat result;
+            for (int r = 0; r < _rows; r++)
+                for (int c = 0; c < _cols; c++)
+                    result.data[r][c] = data[r][c] * scalar;
+            return result;
+        }
+
+        template <typename OutType, typename InType>
+        OutType conv(const Mat<InType, _rows, _cols> &rhs) const
+        {
+            OutType result = Type(0);
+            for (int r = 0; r < _rows; r++)
+            {
+                for (int k = 0; k < _cols; k++)
+                {
+                    result += OutType(data[r][k] * rhs(r, k));
                 }
             }
             return result;
@@ -174,9 +195,9 @@ namespace linalg
         Type data[_rows][_cols];
     };
 
-    template <typename Scalar, // e.g. int, float, double …
-              typename T, int R, int C,
-              typename = std::enable_if_t<std::is_arithmetic_v<Scalar>>>
+    template <typename Scalar,          // e.g. int, float, double …
+              typename T, int R, int C> //,
+                                        // typename = std::enable_if_t<std::is_arithmetic_v<Scalar>>>
     Mat<T, R, C> operator*(Scalar s, const Mat<T, R, C> &m)
     {
         return m * s;
@@ -314,10 +335,34 @@ namespace linalg
     //============================================================
 
     template <typename Type>
+    class Mat2 : public Mat<Type, 2, 2>
+    {
+    public:
+        Mat2() : Mat<Type, 2, 2>() {}
+        Mat2(const Mat<Type, 2, 2> &mat)
+            : Mat<Type, 2, 2>(mat) // call the base-class copy constructor
+        {
+        }
+    };
+
+    template <typename Type>
     class Mat3 : public Mat<Type, 3, 3>
     {
     public:
         Mat3() : Mat<Type, 3, 3>() {}
+
+        Mat3(const Mat<Type, 3, 3> &mat)
+            : Mat<Type, 3, 3>(mat) // call the base-class copy constructor
+        {
+        }
+
+        Mat3(const Type _data[3 * 3])
+        {
+            const Mat3<Type> &m = *this;
+            for (int r = 0; r < 3; r++)
+                for (int c = 0; c < 3; c++)
+                    m(r, c) = _data[r * 3 + c];
+        }
 
         // 3×3 determinant
         Type determinant() const
@@ -333,10 +378,12 @@ namespace linalg
             const Mat3<Type> &m = *this;
 
             Type det = determinant();
+            /*
             if (std::fabs(det) < Type(1e-12))
             {
                 throw std::runtime_error("Encountered near-zero determinant in Mat3::inverse()");
             }
+            */
 
             Type invDet = Type(1) / det;
 
@@ -463,8 +510,8 @@ namespace linalg
         Quaternion inverse() const
         {
             Type normSq = w_ * w_ + x_ * x_ + y_ * y_ + z_ * z_;
-            if (std::fabs(normSq) < Type(1e-12))
-                throw std::runtime_error("Near-zero norm in Quaternion::inverse()");
+            //if (std::fabs(normSq) < Type(1e-12))
+            //    throw std::runtime_error("Near-zero norm in Quaternion::inverse()");
 
             Type inv = Type(1) / normSq;
             return Quaternion(w_ * inv, -x_ * inv, -y_ * inv, -z_ * inv);
