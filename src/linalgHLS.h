@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <type_traits>
 
-namespace linalg
+namespace linalgHLS
 {
     //============================================================
     // Basic fixed-size matrix class
