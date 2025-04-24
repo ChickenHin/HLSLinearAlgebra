@@ -1,6 +1,6 @@
 #pragma once
 
-#include "linalgHLS.h"
+#include "linalgHLS_old.h"
 
 template <typename type, int size>
 class ShiftRegister

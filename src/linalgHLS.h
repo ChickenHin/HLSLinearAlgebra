@@ -1,9 +1,6 @@
 #pragma once
 
-#include <cmath>
-#include <cassert>
-#include <stdexcept>
-#include <type_traits>
+#include "hls_math.h"
 
 namespace linalgHLS
 {
@@ -61,7 +58,7 @@ namespace linalgHLS
         // Static "Identity" constructor (square matrices only!)
         static Mat Identity()
         {
-            static_assert(_rows == _cols, "Identity only makes sense for square matrices");
+            // static_assert(_rows == _cols, "Identity only makes sense for square matrices");
             Mat result = Zero();
             for (int i = 0; i < _rows; i++)
                 result.data[i][i] = Type(1);
@@ -87,7 +84,7 @@ namespace linalgHLS
         template <typename Type2, int __rows, int __cols>
         Mat<Type, _rows, __cols> operator*(const Mat<Type2, __rows, __cols> &rhs) const
         {
-            static_assert(_cols == __rows, "Inner dimensions must match for matrix multiplication");
+            // static_assert(_cols == __rows, "Inner dimensions must match for matrix multiplication");
 
             Mat<Type, _rows, __cols> result = Mat<Type, _rows, __cols>::Zero();
             for (int r = 0; r < _rows; r++)
@@ -164,7 +161,7 @@ namespace linalgHLS
             for (int r = 0; r < _rows; r++)
                 for (int c = 0; c < _cols; c++)
                     sum += data[r][c] * data[r][c];
-            return std::sqrt(sum);
+            return hls::sqrt(sum);
         }
 
         // Element accessors (row, col)
@@ -510,8 +507,8 @@ namespace linalgHLS
         Quaternion inverse() const
         {
             Type normSq = w_ * w_ + x_ * x_ + y_ * y_ + z_ * z_;
-            //if (std::fabs(normSq) < Type(1e-12))
-            //    throw std::runtime_error("Near-zero norm in Quaternion::inverse()");
+            // if (std::fabs(normSq) < Type(1e-12))
+            //     throw std::runtime_error("Near-zero norm in Quaternion::inverse()");
 
             Type inv = Type(1) / normSq;
             return Quaternion(w_ * inv, -x_ * inv, -y_ * inv, -z_ * inv);
@@ -687,8 +684,8 @@ namespace linalgHLS
         }
 
         Vec3<Type> axis = (phi / angle);
-        Type s = std::sin(angle);
-        Type c = std::cos(angle);
+        Type s = hls::sin(angle);
+        Type c = hls::cos(angle);
 
         // Rodrigues' formula: R = I c + (1-c) (axis axis^T) + [axis]_x s
         Mat3<Type> R = Mat3<Type>::Identity() * c + outerProduct(axis, axis) * (Type(1) - c) + wedge(axis) * s;
@@ -712,8 +709,8 @@ namespace linalgHLS
         }
 
         Vec3<Type> axis = (phi / angle);
-        Type s = std::sin(angle);
-        Type c = std::cos(angle);
+        Type s = hls::sin(angle);
+        Type c = hls::cos(angle);
 
         Mat3<Type> I = Mat3<Type>::Identity();
         Mat3<Type> K = wedge(axis);
