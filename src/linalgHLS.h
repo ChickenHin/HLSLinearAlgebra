@@ -20,7 +20,9 @@ namespace linalgHLS
 
         Mat(const Type _data[_rows * _cols])
         {
+        mat_const_data_loop_r:
             for (int r = 0; r < _rows; r++)
+            mat_init_loop_c:
                 for (int c = 0; c < _cols; c++)
                     data[r][c] = _data[r * _cols + c];
         }
@@ -28,7 +30,9 @@ namespace linalgHLS
         // Copy constructor
         Mat(const Mat &other)
         {
+        mat_const_other_loop_r:
             for (int r = 0; r < _rows; r++)
+            mat_const_other_loop_c:
                 for (int c = 0; c < _cols; c++)
                     data[r][c] = other.data[r][c];
         }
@@ -36,9 +40,11 @@ namespace linalgHLS
         // Assignment operator
         Mat &operator=(const Mat &other)
         {
-            if (this != &other)
+            // if (this != &other)
             {
+            mat_assign_loop_r:
                 for (int r = 0; r < _rows; r++)
+                mat_assign_loop_c:
                     for (int c = 0; c < _cols; c++)
                         data[r][c] = other.data[r][c];
             }
@@ -49,7 +55,9 @@ namespace linalgHLS
         static Mat Zero()
         {
             Mat result;
+        mat_zero_loop_r:
             for (int r = 0; r < _rows; r++)
+            mat_zero_loop_c:
                 for (int c = 0; c < _cols; c++)
                     result.data[r][c] = Type(0);
             return result;
@@ -60,6 +68,7 @@ namespace linalgHLS
         {
             // static_assert(_rows == _cols, "Identity only makes sense for square matrices");
             Mat result = Zero();
+        mat_identity_loop_i:
             for (int i = 0; i < _rows; i++)
                 result.data[i][i] = Type(1);
             return result;
@@ -74,7 +83,9 @@ namespace linalgHLS
         Mat<Type, _cols, _rows> transpose() const
         {
             Mat<Type, _cols, _rows> result;
+        mat_tran_loop_r:
             for (int r = 0; r < _rows; r++)
+            mat_tran_loop_c:
                 for (int c = 0; c < _cols; c++)
                     result(c, r) = data[r][c];
             return result;
@@ -87,38 +98,41 @@ namespace linalgHLS
             // static_assert(_cols == __rows, "Inner dimensions must match for matrix multiplication");
 
             Mat<Type, _rows, __cols> result = Mat<Type, _rows, __cols>::Zero();
+        mat_mult_loop_r:
             for (int r = 0; r < _rows; r++)
-            {
+            mat_mult_loop_c:
                 for (int c = 0; c < __cols; c++)
-                {
+                mat_mult_loop_k:
                     for (int k = 0; k < _cols; k++)
-                    {
-                        result(r, c) += data[r][k] * rhs(k, c);
-                    }
-                }
-            }
-            return result;
-        }
 
-        // Scalar division
-        template <typename S> //, typename = std::enable_if_t<std::is_arithmetic_v<S>>>
-        Mat operator/(S scalar) const
-        {
-            Mat result;
-            for (int r = 0; r < _rows; r++)
-                for (int c = 0; c < _cols; c++)
-                    result.data[r][c] = data[r][c] / scalar;
+                        result(r, c) += data[r][k] * rhs(k, c);
+
             return result;
         }
 
         // Scalar multiplication
-        template <typename S> //, typename = std::enable_if_t<std::is_arithmetic_v<S>>>
-        Mat operator*(S scalar) const
+        // template <typename S> //, typename = std::enable_if_t<std::is_arithmetic_v<S>>>
+        Mat operator*(float scalar) const
         {
             Mat result;
+        mat_fmult_loop_r:
             for (int r = 0; r < _rows; r++)
+            mat_fmult_loop_c:
                 for (int c = 0; c < _cols; c++)
-                    result.data[r][c] = data[r][c] * scalar;
+                    result.data[r][c] = Type(data[r][c] * scalar);
+            return result;
+        }
+
+        // Scalar division
+        // template <typename S> //, typename = std::enable_if_t<std::is_arithmetic_v<S>>>
+        Mat operator/(float scalar) const
+        {
+            Mat result;
+        mat_fdiv_loop_r:
+            for (int r = 0; r < _rows; r++)
+            mat_fdev_loop_c:
+                for (int c = 0; c < _cols; c++)
+                    result.data[r][c] = Type(data[r][c] / scalar);
             return result;
         }
 
@@ -126,20 +140,21 @@ namespace linalgHLS
         OutType conv(const Mat<InType, _rows, _cols> &rhs) const
         {
             OutType result = Type(0);
+        mat_conv_loop_r:
             for (int r = 0; r < _rows; r++)
-            {
+            mat_conv_loop_k:
                 for (int k = 0; k < _cols; k++)
-                {
                     result += OutType(data[r][k] * rhs(r, k));
-                }
-            }
+
             return result;
         }
 
         Mat operator+(const Mat &other) const
         {
             Mat result;
+        mat_add_loop_r:
             for (int r = 0; r < _rows; r++)
+            mat_add_loop_c:
                 for (int c = 0; c < _cols; c++)
                     result.data[r][c] = data[r][c] + other.data[r][c];
             return result;
@@ -148,7 +163,9 @@ namespace linalgHLS
         Mat operator-(const Mat &other) const
         {
             Mat result;
+        mat_sub_loop_r:
             for (int r = 0; r < _rows; r++)
+            mat_sub_loop_c:
                 for (int c = 0; c < _cols; c++)
                     result.data[r][c] = data[r][c] - other.data[r][c];
             return result;
@@ -158,7 +175,9 @@ namespace linalgHLS
         Type norm() const
         {
             Type sum = Type(0);
+        mat_norm_loop_r:
             for (int r = 0; r < _rows; r++)
+            mat_norm_loop_c:
                 for (int c = 0; c < _cols; c++)
                     sum += data[r][c] * data[r][c];
             return hls::sqrt(sum);
@@ -211,7 +230,7 @@ namespace linalgHLS
         Vec1() : Mat<Type, 1, 1>() {}
         Vec1(Type x)
         {
-            (*this)(0) = x;
+            Mat<Type, 1, 1>::data[0] = x;
         }
     };
 
@@ -275,6 +294,11 @@ namespace linalgHLS
             (*this)(1) = y;
             (*this)(2) = z;
             (*this)(3) = w;
+        }
+
+        Vec2<Type> xy()
+        {
+            return Vec2<Type>((*this)(0), (*this)(1));
         }
     };
 
@@ -356,7 +380,9 @@ namespace linalgHLS
         Mat3(const Type _data[3 * 3])
         {
             const Mat3<Type> &m = *this;
+        mat3_const_loop_r:
             for (int r = 0; r < 3; r++)
+            mat3_const_loop_c:
                 for (int c = 0; c < 3; c++)
                     m(r, c) = _data[r * 3 + c];
         }
@@ -665,7 +691,9 @@ namespace linalgHLS
     Mat3<Type> outerProduct(const Vec3<Type> &a, const Vec3<Type> &b)
     {
         Mat3<Type> m = Mat3<Type>::Zero();
+    mat3_out_loop_r:
         for (int r = 0; r < 3; r++)
+        mat_out_loop_c:
             for (int c = 0; c < 3; c++)
                 m(r, c) = a(r) * b(c);
         return m;
@@ -756,7 +784,9 @@ namespace linalgHLS
         {
             Mat4<Type> mat = Mat4<Type>::Zero();
             Mat3<Type> R = rot_.matrix();
+        se3_matrix_loop_r:
             for (int r = 0; r < 3; r++)
+            se3_matrix_loop_c:
                 for (int c = 0; c < 3; c++)
                     mat(r, c) = R(r, c);
             mat(3, 0) = trans_(0);
