@@ -32,8 +32,10 @@ namespace linalgHLS
         {
         mat_const_other_loop_r:
             for (int r = 0; r < _rows; r++)
+            #pragma HLS UNROLL
             mat_const_other_loop_c:
                 for (int c = 0; c < _cols; c++)
+                #pragma HLS UNROLL
                     data[r][c] = other.data[r][c];
         }
 
@@ -57,8 +59,12 @@ namespace linalgHLS
             Mat result;
         mat_zero_loop_r:
             for (int r = 0; r < _rows; r++)
+#pragma HLS UNROLL
+                
             mat_zero_loop_c:
                 for (int c = 0; c < _cols; c++)
+#pragma HLS UNROLL
+                    
                     result.data[r][c] = Type(0);
             return result;
         }
@@ -70,6 +76,7 @@ namespace linalgHLS
             Mat result = Zero();
         mat_identity_loop_i:
             for (int i = 0; i < _rows; i++)
+            #pragma HLS UNROLL
                 result.data[i][i] = Type(1);
             return result;
         }
@@ -211,10 +218,8 @@ namespace linalgHLS
         Type data[_rows][_cols];
     };
 
-    template <typename Scalar,          // e.g. int, float, double …
-              typename T, int R, int C> //,
-                                        // typename = std::enable_if_t<std::is_arithmetic_v<Scalar>>>
-    Mat<T, R, C> operator*(Scalar s, const Mat<T, R, C> &m)
+    template <typename T, int R, int C>
+    Mat<T, R, C> operator*(float s, const Mat<T, R, C> &m)
     {
         return m * s;
     }
@@ -786,8 +791,10 @@ namespace linalgHLS
             Mat3<Type> R = rot_.matrix();
         se3_matrix_loop_r:
             for (int r = 0; r < 3; r++)
+            #pragma HLS UNROLL
             se3_matrix_loop_c:
                 for (int c = 0; c < 3; c++)
+                #pragma HLS UNROLL
                     mat(r, c) = R(r, c);
             mat(3, 0) = trans_(0);
             mat(3, 1) = trans_(1);
