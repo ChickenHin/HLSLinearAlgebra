@@ -32,10 +32,10 @@ namespace linalgHLS
         {
         mat_const_other_loop_r:
             for (int r = 0; r < _rows; r++)
-            #pragma HLS UNROLL
+#pragma HLS UNROLL
             mat_const_other_loop_c:
                 for (int c = 0; c < _cols; c++)
-                #pragma HLS UNROLL
+#pragma HLS UNROLL
                     data[r][c] = other.data[r][c];
         }
 
@@ -60,11 +60,11 @@ namespace linalgHLS
         mat_zero_loop_r:
             for (int r = 0; r < _rows; r++)
 #pragma HLS UNROLL
-                
+
             mat_zero_loop_c:
                 for (int c = 0; c < _cols; c++)
 #pragma HLS UNROLL
-                    
+
                     result.data[r][c] = Type(0);
             return result;
         }
@@ -76,7 +76,7 @@ namespace linalgHLS
             Mat result = Zero();
         mat_identity_loop_i:
             for (int i = 0; i < _rows; i++)
-            #pragma HLS UNROLL
+#pragma HLS UNROLL
                 result.data[i][i] = Type(1);
             return result;
         }
@@ -595,6 +595,11 @@ namespace linalgHLS
             quaternion_ = q;
         }
 
+        Quaternion<Type> getQuaterion() const
+        {
+            return quaternion_;
+        }
+
         Mat3<Type> matrix() const
         {
             return quaternion_.matrix();
@@ -780,6 +785,12 @@ namespace linalgHLS
             trans_ = t;
         }
 
+        SE3(Type *r_data, Type *t_data)
+        {
+            rot_ = SO3<Type>(r_data[0], r_data[1], r_data[2], r_data[3]);
+            trans_ = Vec3<Type>(t_data[0], t_data[1], t_data[2]);
+        }
+
         void setQuaternion(const Quaternion<Type> &q)
         {
             rot_.setQuaternion(q);
@@ -791,10 +802,10 @@ namespace linalgHLS
             Mat3<Type> R = rot_.matrix();
         se3_matrix_loop_r:
             for (int r = 0; r < 3; r++)
-            #pragma HLS UNROLL
+#pragma HLS UNROLL
             se3_matrix_loop_c:
                 for (int c = 0; c < 3; c++)
-                #pragma HLS UNROLL
+#pragma HLS UNROLL
                     mat(r, c) = R(r, c);
             mat(3, 0) = trans_(0);
             mat(3, 1) = trans_(1);
