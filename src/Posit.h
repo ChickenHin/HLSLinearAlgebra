@@ -3,6 +3,7 @@
 #include "ap_int.h"
 #include <cstdint>
 #include <cmath>
+#include "ap_fixed.h"
 
 template <int nbits, int es>
 class Posit {
@@ -16,7 +17,7 @@ public:
     bool isZero() const { return bits == 0; }
     bool isNaR() const { return bits == (ap_uint<nbits>(1) << (nbits - 1)); }
 
-    void decode(bool& sign, int& k, int& exponent, uint64_t& fraction, int& frac_len) const {
+    void decode(bool& sign, int& k, int& exponent, ap_fixed<nbits, 2>& fraction, int& frac_len) const {
         if (isZero() || isNaR()) {
             sign = false; k = 0; exponent = 0; fraction = 0; frac_len = 0;
             return;
@@ -47,11 +48,13 @@ public:
         for (int i = 0; i < frac_len; ++i) {
             int bit_pos = frac_start - i;
             if (bit_pos >= 0)
-                fraction |= (uint64_t(ui[bit_pos]) << (frac_len - 1 - i));
+                 fraction.range(frac_len - 1 - i, frac_len - 1 - i) = ui[bit_pos];
+
+                //fraction.set_bit(frac_len - 1 - i, ui[bit_pos]);
         }
     }
 
-    static Posit encode(bool sign, int k, int exponent, uint64_t fraction, int frac_len) {
+    static Posit encode(bool sign, int k, int exponent, ap_fixed<nbits, 2>& fraction, int frac_len) {
         if (k > nbits - 2) {
             ap_uint<nbits> maxpos = (ap_uint<nbits>(1) << (nbits - 1)) - 1;
 
@@ -98,7 +101,7 @@ public:
         for (int i = 0; i < frac_len; ++i) {
             int bit_pos = frac_pos - i;
             if (bit_pos >= 0) {
-                bool bit = (fraction >> (frac_len - 1 - i)) & 1;
+                bool bit = fraction[frac_len - 1 - i];
                 result.set(bit_pos, bit);
             }
         }
@@ -110,11 +113,11 @@ public:
         return Posit(uint16_t(result));
     }
 
-    static uint64_t round_fraction(uint64_t value, int shift, int frac_bits) {
+    static ap_fixed<nbits, 2> round_fraction(ap_fixed<nbits, 2> value, int shift, int frac_bits) {
         if (shift <= 0) return value << (-shift);
-        uint64_t mask = (1ull << shift) - 1;
-        uint64_t halfway = 1ull << (shift - 1);
-        uint64_t lsb = (value >> shift) & 1;
+        ap_fixed<nbits, 2> mask = (1ull << shift) - 1;
+        ap_fixed<nbits, 2> halfway = 1ull << (shift - 1);
+        ap_fixed<nbits, 2> lsb = (value >> shift) & 1;
         bool round = ((value & mask) > halfway) ||
                      ((value & mask) == halfway && lsb);
         return (value >> shift) + round;
@@ -127,7 +130,7 @@ public:
 
         bool signA, signB;
         int kA, kB, expA, expB;
-        uint64_t fracA, fracB;
+        ap_fixed<nbits, 2> fracA, fracB;
         int fracLenA, fracLenB;
         decode(signA, kA, expA, fracA, fracLenA);
         rhs.decode(signB, kB, expB, fracB, fracLenB);
@@ -135,8 +138,8 @@ public:
         int scaleA = kA * (1 << es) + expA;
         int scaleB = kB * (1 << es) + expB;
 
-        uint64_t mantA = (uint64_t(1) << fracLenA) | fracA;
-        uint64_t mantB = (uint64_t(1) << fracLenB) | fracB;
+        ap_fixed<nbits, 2> mantA = (ap_fixed<nbits, 2>(1) << fracLenA) | fracA;
+        ap_fixed<nbits, 2> mantB = (ap_fixed<nbits, 2>(1) << fracLenB) | fracB;
 
         int scaleDiff = scaleA - scaleB;
         if (scaleDiff > 0) {
@@ -150,7 +153,7 @@ public:
             scaleA = scaleB;
         }
 
-        uint64_t resMant;
+        ap_fixed<nbits, 2> resMant;
         bool resSign;
         if (signA == signB) {
             resMant = mantA + mantB;
@@ -168,7 +171,7 @@ public:
 
         int resFracLen = std::max(fracLenA, fracLenB) + 1;
         int leading_zeros = 0;
-        while (((resMant & (uint64_t(1) << (resFracLen))) == 0) && resFracLen > 0) {
+        while (((resMant & (ap_fixed<nbits, 2>(1) << (resFracLen))) == 0) && resFracLen > 0) {
             resMant <<= 1;
             leading_zeros++;
             resFracLen--;
@@ -184,9 +187,9 @@ public:
         if (frac_bits < 0) frac_bits = 0;
 
         int shift = resFracLen - frac_bits;
-        uint64_t rounded_frac = round_fraction(resMant, shift, frac_bits);
+        ap_fixed<nbits, 2> rounded_frac = round_fraction(resMant, shift, frac_bits);
 
-        if (rounded_frac >= (uint64_t(1) << frac_bits)) {
+        if (rounded_frac >= (ap_fixed<nbits, 2>(1) << frac_bits)) {
             rounded_frac >>= 1;
             res_exp++;
             if (res_exp > max_exponent) {
@@ -199,9 +202,11 @@ public:
     }
 
     Posit operator-(const Posit& rhs) const {
-        Posit neg_rhs = rhs;
-        neg_rhs.bits = (~rhs.bits + 1);
-        return *this + neg_rhs;
+        // Subtraction: only flip the sign of rhs
+        bool sign_rhs = !rhs.isZero();
+        ap_fixed<nbits, 2> default_fraction = 0;
+        return *this + encode(sign_rhs, 0, 0, default_fraction, 0);
+
     }
 
     Posit operator*(const Posit& rhs) const {
@@ -210,7 +215,7 @@ public:
 
         bool signA, signB;
         int kA, kB, expA, expB;
-        uint64_t fracA, fracB;
+        ap_fixed<nbits, 2> fracA, fracB;
         int fracLenA, fracLenB;
         decode(signA, kA, expA, fracA, fracLenA);
         rhs.decode(signB, kB, expB, fracB, fracLenB);
@@ -219,12 +224,12 @@ public:
         int res_k = kA + kB;
         int res_exp = expA + expB;
 
-        uint64_t mantA = (uint64_t(1) << fracLenA) | fracA;
-        uint64_t mantB = (uint64_t(1) << fracLenB) | fracB;
-        uint64_t product = mantA * mantB;
-        int product_len = fracLenA + fracLenB + 1;
+        ap_fixed<nbits, 2> mantA = (ap_fixed<nbits, 2>(1) << fracLenA) | fracA;
+        ap_fixed<nbits, 2> mantB = (ap_fixed<nbits, 2>(1) << fracLenB) | fracB;
+        ap_fixed<nbits, 2> product = mantA * mantB;
 
-        if (product & (uint64_t(1) << product_len)) {
+        int product_len = fracLenA + fracLenB + 1;
+        if (product & (ap_fixed<nbits, 2>(1) << product_len)) {
             product >>= 1;
             res_exp++;
         }
@@ -238,9 +243,9 @@ public:
         int frac_bits = nbits - 1 - (std::abs(res_k) + 1) - es;
         if (frac_bits < 0) frac_bits = 0;
         int shift = product_len - frac_bits;
-        uint64_t res_frac = round_fraction(product, shift, frac_bits);
+        ap_fixed<nbits, 2> res_frac = round_fraction(product, shift, frac_bits);
 
-        if (res_frac >= (uint64_t(1) << frac_bits)) {
+        if (res_frac >= (ap_fixed<nbits, 2>(1) << frac_bits)) {
             res_frac >>= 1;
             res_exp++;
             if (res_exp > max_exponent) {
@@ -258,7 +263,7 @@ public:
 
         bool signA, signB;
         int kA, kB, expA, expB;
-        uint64_t fracA, fracB;
+        ap_fixed<nbits, 2> fracA, fracB;
         int fracLenA, fracLenB;
         decode(signA, kA, expA, fracA, fracLenA);
         rhs.decode(signB, kB, expB, fracB, fracLenB);
@@ -267,15 +272,16 @@ public:
         int res_k = kA - kB;
         int res_exp = expA - expB;
 
-        uint64_t mantA = (uint64_t(1) << fracLenA) | fracA;
-        uint64_t mantB = (uint64_t(1) << fracLenB) | fracB;
+        ap_fixed<nbits, 2> mantA = (ap_fixed<nbits, 2>(1) << fracLenA) | fracA;
+        ap_fixed<nbits, 2> mantB = (ap_fixed<nbits, 2>(1) << fracLenB) | fracB;
 
         int shift = 63 - fracLenA;
-        uint64_t dividend = mantA << shift;
-        uint64_t quotient = dividend / mantB;
+        ap_fixed<nbits, 2> dividend = mantA << shift;
+        ap_fixed<nbits, 2> quotient = dividend / mantB;
+
         int quotient_len = 64;
 
-        while (((quotient & (uint64_t(1) << (quotient_len - 1))) == 0) && quotient_len > 0) {
+        while (((quotient & (ap_fixed<nbits, 2>(1) << (quotient_len - 1))) == 0) && quotient_len > 0) {
             quotient <<= 1;
             quotient_len--;
         }
@@ -295,9 +301,9 @@ public:
         if (frac_bits < 0) frac_bits = 0;
 
         int round_shift = quotient_len - frac_bits;
-        uint64_t res_frac = round_fraction(quotient, round_shift, frac_bits);
+        ap_fixed<nbits, 2> res_frac = round_fraction(quotient, round_shift, frac_bits);
 
-        if (res_frac >= (uint64_t(1) << frac_bits)) {
+        if (res_frac >= (ap_fixed<nbits, 2>(1) << frac_bits)) {
             res_frac >>= 1;
             res_exp++;
             if (res_exp > max_exponent) {
@@ -316,7 +322,7 @@ public:
 
         bool sign;
         int k, exponent;
-        uint64_t frac;
+        ap_fixed<nbits, 2> frac;
         int frac_len;
         decode(sign, k, exponent, frac, frac_len);
 
