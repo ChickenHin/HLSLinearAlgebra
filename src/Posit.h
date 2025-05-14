@@ -291,7 +291,9 @@ public:
         bool sign = in1.sign ^ in2.sign;
         ap_int<max_k_size> k = in1.k - in2.k;
         ap_int<es + 1> exp = in1.exp - in2.exp;
-        ap_ufixed<max_frac_size * 2, 1> frac = in1.frac / in2.frac;
+        ap_ufixed<max_frac_size * 2, 1> frac1 = in1.frac;
+        ap_ufixed<max_frac_size * 2, 1> frac2 = in2.frac;
+        ap_ufixed<max_frac_size * 2, 1> frac = frac1 / frac2;
 
         // normalize
         if (frac < 1)

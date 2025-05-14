@@ -16,7 +16,7 @@ int main(void)
 
     for (float a = -32.0f; a < 32.0f; a += pow(2.0f, -5.0f))
     {
-        for (float b = -31.84375000000000000000f; b < 32.0f; b += pow(2.0f, -5.0f))
+        for (float b = -32.0f; b < 32.0f; b += pow(2.0f, -5.0f))
         {
             bool failed = false;
 

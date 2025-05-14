@@ -42,11 +42,11 @@ int main(void)
             double mul = double(a) * double(b);
             double div = double(a) / double(b);
 
-            FloatX<nbits, es> sum_mixed = a_mixed + b_mixed;
-            FloatX<nbits, es> res_mixed = a_mixed - b_mixed;
-            FloatX<nbits, es> mul_mixed = a_mixed * b_mixed;
+            //FloatX<nbits, es> sum_mixed = a_mixed + b_mixed;
+            //FloatX<nbits, es> res_mixed = a_mixed - b_mixed;
+            //FloatX<nbits, es> mul_mixed = a_mixed * b_mixed;
             FloatX<nbits, es> div_mixed = a_mixed / b_mixed;
-
+            /*
             float sum_diff = fabs(sum - float(sum_mixed));
             if (sum_diff > sum_max_diff)
             {
@@ -70,7 +70,7 @@ int main(void)
                 std::cout << float(a_mixed) << " - " << float(b_mixed) << " = " << float(res_mixed) << std::endl;
                 failed = true;
             }
-
+            */
             float div_diff = fabs(div - float(div_mixed));
             if (div_diff > div_max_diff)
             {

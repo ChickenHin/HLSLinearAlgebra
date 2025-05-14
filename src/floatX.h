@@ -230,7 +230,9 @@ public:
 
         bool sign = in1.sign ^ in2.sign;
         ap_int<exp_size> exp = in1.exp - in2.exp;
-        ap_ufixed<frac_size * 2, 1> frac = in1.frac / in2.frac;
+        ap_ufixed<frac_size * 2, 1> frac1 = in1.frac;
+        ap_ufixed<frac_size * 2, 1> frac2 = in2.frac;
+        ap_ufixed<frac_size * 2, 1> frac = frac1 / frac2;
 
         // normalize
         if (frac < 1)
