@@ -4,8 +4,8 @@
 
 #include "floatX.h"
 
-#define mantissa_size 23
-#define exponent_size 8
+#define nbits 32
+#define es 8
 
 int main(void)
 {
@@ -14,24 +14,24 @@ int main(void)
     float mul_max_diff = 0.001f;
     float div_max_diff = 0.001f;
 
-    for(float a = 1.0f; a < 32.0f; a+=1.0f)//pow(2.0f, -5.0f))
+    for (float a = -32.0f; a < 32.0f; a += 1.0f) // pow(2.0f, -5.0f))
     {
-        for(float b = 1.0f; b < 32.0f; b+=0.01f)//pow(2.0f, -5.0f))
+        for (float b = -32.0f; b < 32.0f; b += 0.01f) // pow(2.0f, -5.0f))
         {
             bool failed = false;
 
-            floatX<mantissa_size, exponent_size> a_mixed(a);
-            floatX<mantissa_size, exponent_size> b_mixed(b);
+            FloatX<nbits, es> a_mixed(a);
+            FloatX<nbits, es> b_mixed(b);
 
             std::cout << std::setprecision(20) << std::fixed;
 
-            if(a != float(a_mixed))
+            if (a != float(a_mixed))
             {
                 std::cout << "a is not equal: " << a << " != " << float(a_mixed) << std::endl;
                 failed = true;
             }
 
-            if(b != float(b_mixed))
+            if (b != float(b_mixed))
             {
                 std::cout << "b is not equal: " << b << " != " << float(b_mixed) << std::endl;
                 failed = true;
@@ -42,13 +42,13 @@ int main(void)
             double mul = double(a) * double(b);
             double div = double(a) / double(b);
 
-            floatX<mantissa_size, exponent_size> sum_mixed = a_mixed + b_mixed;
-            floatX<mantissa_size, exponent_size> res_mixed = a_mixed - b_mixed;
-            floatX<mantissa_size, exponent_size> mul_mixed = a_mixed * b_mixed;
-            floatX<mantissa_size, exponent_size> div_mixed = a_mixed / b_mixed;
+            FloatX<nbits, es> sum_mixed = a_mixed + b_mixed;
+            FloatX<nbits, es> res_mixed = a_mixed - b_mixed;
+            FloatX<nbits, es> mul_mixed = a_mixed * b_mixed;
+            FloatX<nbits, es> div_mixed = a_mixed / b_mixed;
 
             float sum_diff = fabs(sum - float(sum_mixed));
-            if(sum_diff > sum_max_diff)
+            if (sum_diff > sum_max_diff)
             {
                 std::cout << "diff: " << sum_diff << " in: " << a << " + " << b << " = " << sum << std::endl;
                 std::cout << float(a_mixed) << " + " << float(b_mixed) << " = " << float(sum_mixed) << std::endl;
@@ -56,30 +56,30 @@ int main(void)
             }
 
             float mul_diff = fabs(mul - float(mul_mixed));
-            if(mul_diff > mul_max_diff)
+            if (mul_diff > mul_max_diff)
             {
                 std::cout << "diff: " << mul_diff << " in: " << a << " * " << b << " = " << mul << std::endl;
                 std::cout << float(a_mixed) << " * " << float(b_mixed) << " = " << float(mul_mixed) << std::endl;
                 failed = true;
             }
-        
+
             float res_diff = fabs(res - float(res_mixed));
-            if(res_diff > res_max_diff)
+            if (res_diff > res_max_diff)
             {
                 std::cout << "diff: " << res_diff << " in: " << a << " - " << b << " = " << res << std::endl;
                 std::cout << float(a_mixed) << " - " << float(b_mixed) << " = " << float(res_mixed) << std::endl;
                 failed = true;
             }
-            
+
             float div_diff = fabs(div - float(div_mixed));
-            if(div_diff > div_max_diff)
+            if (div_diff > div_max_diff)
             {
                 std::cout << "diff: " << div_diff << " in: " << a << " / " << b << " = " << div << std::endl;
                 std::cout << float(a_mixed) << " / " << float(b_mixed) << " = " << float(div_mixed) << std::endl;
                 failed = true;
             }
 
-            if(failed)
+            if (failed)
             {
                 std::cout << "failure" << std::endl;
                 return 1;
