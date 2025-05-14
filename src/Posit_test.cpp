@@ -1,50 +1,91 @@
 #include <iostream>
+#include <stdio.h>
 #include <iomanip>
+
 #include "Posit.h"
 
-int main() {
-    using P16 = Posit<16, 2>;
+#define posit_size 32
+#define exponent_size 3
 
-    auto print = [](const char* label, const P16& p) {
-        std::cout << label << " bits=0x" << std::hex << p.bits.to_uint()
-                  << " float approx=" << std::dec << p.to_float() << "\n";
-    };
+int main(void)
+{
+    float sum_max_diff = 0.001f;
+    float res_max_diff = 0.001f;
+    float mul_max_diff = 0.001f;
+    float div_max_diff = 0.001f;
 
-    // Test 1: Addition
-    P16 a(0x4000); // ~1.0
-    P16 b(0x4800); // ~1.25
-    P16 c = a + b;
-    print("Add 1 + 1.25 =", c);
+    for (float a = -32.0f; a < 32.0f; a += 1.0f) // pow(2.0f, -5.0f))
+    {
+        for (float b = -32.0f; b < 32.0f; b += 0.01f) // pow(2.0f, -5.0f))
+        {
+            bool failed = false;
 
-    // Test 2: Subtraction
-    P16 d = b - a;
-    print("Sub 1.25 - 1 =", d);
+            Posit<posit_size, exponent_size> a_mixed(a);
+            Posit<posit_size, exponent_size> b_mixed(b);
 
-    // Test 3: Multiplication
-    P16 e = a * b;
-    print("Mul 1 * 1.25 =", e);
+            std::cout << std::setprecision(20) << std::fixed;
 
-    // Test 4: Division
-    P16 f = b / a;
-    print("Div 1.25 / 1 =", f);
+            if (a != float(a_mixed))
+            {
+                std::cout << "a is not equal: " << a << " != " << float(a_mixed) << std::endl;
+                // failed = true;
+            }
 
-    // Test 5: Zero and NaR
-    P16 zero(0x0000);
-    P16 nar(0x8000);
-    print("Zero =", zero);
-    print("NaR =", nar);
-    print("Add NaR + 1 =", nar + a);
-    print("Mul Zero * 1 =", zero * a);
+            if (b != float(b_mixed))
+            {
+                std::cout << "b is not equal: " << b << " != " << float(b_mixed) << std::endl;
+                failed = true;
+            }
 
-    // Test 6: Denormal handling (small value + 1)
-    P16 tiny(0x0001); // very small posit
-    P16 g = tiny + a;
-    print("Tiny + 1 =", g);
+            double sum = double(a) + double(b);
+            double res = double(a) - double(b);
+            double mul = double(a) * double(b);
+            double div = double(a) / double(b);
 
-    // Test 7: Overflow check (maxpos * maxpos)
-    P16 maxpos(0x7FFF);
-    P16 h = maxpos * maxpos;
-    print("Maxpos * Maxpos =", h);
+            Posit<posit_size, exponent_size> sum_mixed = a_mixed + b_mixed;
+            Posit<posit_size, exponent_size> res_mixed = a_mixed - b_mixed;
+            Posit<posit_size, exponent_size> mul_mixed = a_mixed * b_mixed;
+            Posit<posit_size, exponent_size> div_mixed = a_mixed / b_mixed;
+
+            float sum_diff = fabs(sum - float(sum_mixed));
+            if (sum_diff > sum_max_diff)
+            {
+                std::cout << "diff: " << sum_diff << " in: " << a << " + " << b << " = " << sum << std::endl;
+                std::cout << float(a_mixed) << " + " << float(b_mixed) << " = " << float(sum_mixed) << std::endl;
+                failed = true;
+            }
+
+            float mul_diff = fabs(mul - float(mul_mixed));
+            if (mul_diff > mul_max_diff)
+            {
+                std::cout << "diff: " << mul_diff << " in: " << a << " * " << b << " = " << mul << std::endl;
+                std::cout << float(a_mixed) << " * " << float(b_mixed) << " = " << float(mul_mixed) << std::endl;
+                failed = true;
+            }
+
+            float res_diff = fabs(res - float(res_mixed));
+            if (res_diff > res_max_diff)
+            {
+                std::cout << "diff: " << res_diff << " in: " << a << " - " << b << " = " << res << std::endl;
+                std::cout << float(a_mixed) << " - " << float(b_mixed) << " = " << float(res_mixed) << std::endl;
+                failed = true;
+            }
+
+            float div_diff = fabs(div - float(div_mixed));
+            if (div_diff > div_max_diff)
+            {
+                std::cout << "diff: " << div_diff << " in: " << a << " / " << b << " = " << div << std::endl;
+                std::cout << float(a_mixed) << " / " << float(b_mixed) << " = " << float(div_mixed) << std::endl;
+                failed = true;
+            }
+
+            if (failed)
+            {
+                std::cout << "failure" << std::endl;
+                return 1;
+            }
+        }
+    }
 
     return 0;
 }

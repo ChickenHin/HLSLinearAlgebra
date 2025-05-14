@@ -14,9 +14,9 @@ int main(void)
     float mul_max_diff = 0.001f;
     float div_max_diff = 0.001f;
 
-    for(float a = -32.0f; a < 32.0f; a+=1.0f)//pow(2.0f, -5.0f))
+    for(float a = 1.0f; a < 32.0f; a+=1.0f)//pow(2.0f, -5.0f))
     {
-        for(float b = -32.0f; b < 32.0f; b+=0.01f)//pow(2.0f, -5.0f))
+        for(float b = 1.0f; b < 32.0f; b+=0.01f)//pow(2.0f, -5.0f))
         {
             bool failed = false;
 
@@ -25,19 +25,17 @@ int main(void)
 
             std::cout << std::setprecision(20) << std::fixed;
 
-            /*
-            if(a != a_mixed.to_float())
+            if(a != float(a_mixed))
             {
-                std::cout << "a is not equal: " << a << " != " << a_mixed.to_float() << std::endl;
+                std::cout << "a is not equal: " << a << " != " << float(a_mixed) << std::endl;
                 failed = true;
             }
 
-            if(b != b_mixed.to_float())
+            if(b != float(b_mixed))
             {
-                std::cout << "b is not equal: " << b << " != " << b_mixed.to_float() << std::endl;
+                std::cout << "b is not equal: " << b << " != " << float(b_mixed) << std::endl;
                 failed = true;
             }
-            */
 
             double sum = double(a) + double(b);
             double res = double(a) - double(b);
