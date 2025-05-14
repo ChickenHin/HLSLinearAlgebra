@@ -4,8 +4,8 @@
 
 #include "floatX.h"
 
-#define nbits 32
-#define es 8
+#define nbits 16
+#define es 5
 
 int main(void)
 {
@@ -14,9 +14,9 @@ int main(void)
     float mul_max_diff = 0.001f;
     float div_max_diff = 0.001f;
 
-    for (float a = -32.0f; a < 32.0f; a += 1.0f) // pow(2.0f, -5.0f))
+    for (float a = -32.0f; a < 32.0f; a += pow(2.0f, -5.0f))
     {
-        for (float b = -32.0f; b < 32.0f; b += 0.01f) // pow(2.0f, -5.0f))
+        for (float b = -32.0f; b < 32.0f; b += pow(2.0f, -5.0f))
         {
             bool failed = false;
 

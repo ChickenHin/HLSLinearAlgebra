@@ -75,7 +75,9 @@ public:
 
         unpacked_t unpacked = decode();
 
-        bool sign = unpacked.sign;
+        ap_uint<32> float_bits = 0;
+
+        float_bits(31, 31) = unpacked.sign;
 
         ap_uint<8> exponent;
         if (unpacked.frac == 0)
@@ -83,17 +85,12 @@ public:
         else
             exponent = unpacked.exp + hls::pow(2, 7) - 1;
 
-        ap_uint<23> frac;
-        if (23 >= nbits - 1 - es)
-            frac(22, 22 - nbits + es + 2) = unpacked.frac(frac_size - 2, 0);
-        else
-            frac(22, 0) = unpacked.frac(frac_size - 2, frac_size - 2 - 22);
-
-        ap_uint<32> float_bits;
-
-        float_bits(31, 31) = sign;
         float_bits(30, 23) = exponent;
-        float_bits(22, 0) = frac;
+
+        if (23 >= nbits - 1 - es)
+            float_bits(22, 22 - nbits + es + 2) = unpacked.frac(frac_size - 2, 0);
+        else
+            float_bits(22, 0) = unpacked.frac(frac_size - 2, frac_size - 2 - 22);
 
         float fresult = *reinterpret_cast<float *>(&float_bits);
         return fresult;

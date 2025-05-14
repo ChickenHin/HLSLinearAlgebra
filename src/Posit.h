@@ -101,7 +101,7 @@ public:
 
         unpacked_t unpacked = decode();
 
-        ap_uint<32> float_bits;
+        ap_uint<32> float_bits = 0;
 
         float_bits(31, 31) = unpacked.sign;
 
@@ -142,7 +142,7 @@ public:
 
         // k and exp are from the biggest number
         ap_int<max_k_size> k = in1.k;
-        ap_int<es*2> exp = in1.exp;
+        ap_int<es * 2> exp = in1.exp;
 
         // add the sign back into the fraction, so that we can do the sum
         ap_fixed<max_frac_size + 2, 2> frac1 = in1.frac;
