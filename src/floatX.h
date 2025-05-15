@@ -69,15 +69,47 @@ public:
         encode(unpacked);
     }
 
+    FloatX(double c)
+    {
+#pragma HLS INLINE
+
+        ap_uint<64> bits = *reinterpret_cast<ap_uint<64> *>(&c);
+        // unsigned int* bitsPtr = (unsigned int*)&c;
+        // unsigned int bits = *bitsPtr; // Dereference to get the raw bits
+
+        bool fsign = bits[63];
+        // remove bias from floating point exponent
+        ap_int<11> fexponent = bits(62, 52) - hls::pow(2, 10) + 1;
+        // get mantisa from floating point
+        ap_ufixed<53, 1> fmantissa;
+        fmantissa[52] = 1;
+        fmantissa(51, 0) = bits(51, 0);
+
+        unpacked_t unpacked;
+
+        unpacked.sign = fsign;
+        unpacked.exp = fexponent;
+        unpacked.frac = fmantissa;
+
+        if (c == 0.0f)
+        {
+            unpacked.sign = 0;
+            unpacked.exp = 0;
+            unpacked.frac = 0;
+        }
+
+        encode(unpacked);
+    }
+
     operator float()
     {
 #pragma HLS INLINE
 
         unpacked_t unpacked = decode();
 
-        ap_uint<32> float_bits = 0;
+        ap_uint<32> bits = 0;
 
-        float_bits(31, 31) = unpacked.sign;
+        bits(31, 31) = unpacked.sign;
 
         ap_uint<8> exponent;
         if (unpacked.frac == 0)
@@ -85,14 +117,41 @@ public:
         else
             exponent = unpacked.exp + hls::pow(2, 7) - 1;
 
-        float_bits(30, 23) = exponent;
+        bits(30, 23) = exponent;
 
         if (23 >= nbits - 1 - es)
-            float_bits(22, 22 - nbits + es + 2) = unpacked.frac(frac_size - 2, 0);
+            bits(22, 22 - nbits + es + 2) = unpacked.frac(frac_size - 2, 0);
         else
-            float_bits(22, 0) = unpacked.frac(frac_size - 2, frac_size - 2 - 22);
+            bits(22, 0) = unpacked.frac(frac_size - 2, frac_size - 2 - 22);
 
-        float fresult = *reinterpret_cast<float *>(&float_bits);
+        float fresult = *reinterpret_cast<float *>(&bits);
+        return fresult;
+    }
+
+    operator double()
+    {
+#pragma HLS INLINE
+
+        unpacked_t unpacked = decode();
+
+        ap_uint<64> bits = 0;
+
+        bits[63] = unpacked.sign;
+
+        ap_uint<11> exponent;
+        if (unpacked.frac == 0)
+            exponent = 0;
+        else
+            exponent = unpacked.exp + hls::pow(2, 10) - 1;
+
+        bits(62, 52) = exponent;
+
+        if (52 >= nbits - 1 - es)
+            bits(51, 51 - nbits + es + 2) = unpacked.frac(frac_size - 2, 0);
+        else
+            bits(51, 0) = unpacked.frac(frac_size - 2, frac_size - 2 - 51);
+
+        double fresult = *reinterpret_cast<double *>(&bits);
         return fresult;
     }
 
