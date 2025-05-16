@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <iomanip>
 
-#include "Posit.h"
+#include "FloatX.h"
 
-#define nbits 16
-#define es 2
+#define nbits 32
+#define es 8
 
 int main(void)
 {
@@ -16,7 +16,7 @@ int main(void)
     double mul_max_diff = 0.0f;
     double div_max_diff = 0.0f;
 
-    double max = pow(2.0, 23);
+    double max = pow(2.0, 10);
     double step = pow(2.0, 2);
 
     for (double a = -max; a < max; a += step)
@@ -30,16 +30,16 @@ int main(void)
 
             bool failed = false;
 
-            Posit<nbits, es> a_mixed(a);
+            FloatX<nbits, es> a_mixed(a);
             double a_double = double(a_mixed);
 
             if (a != a_double)
             {
                 std::cout << "a is not equal: " << a << " != " << a_double << std::endl;
-                // failed = true;
+                failed = true;
             }
 
-            Posit<nbits, es> b_mixed(b);
+            FloatX<nbits, es> b_mixed(b);
             double b_double = double(b_mixed);
 
             if (b != b_double)
@@ -48,7 +48,7 @@ int main(void)
                 failed = true;
             }
 
-            Posit<nbits, es> add_mixed = a_mixed + b_mixed;
+            FloatX<nbits, es> add_mixed = a_mixed + b_mixed;
             double add_double = double(add_mixed);
 
             double add_diff = fabs(add - add_double);
@@ -59,19 +59,8 @@ int main(void)
                 failed = true;
             }
 
-            Posit<nbits, es> sub_mixed = a_mixed - b_mixed;
+            FloatX<nbits, es> sub_mixed = a_mixed - b_mixed;
             double sub_double = double(sub_mixed);
-
-            double sub_diff = fabs(sub - sub_double);
-            if (sub_diff > sub_max_diff)
-            {
-                std::cout << "diff: " << sub_diff << " in: " << a << " - " << b << " = " << sub << std::endl;
-                std::cout << a_double << " - " << b_double << " = " << sub_double << std::endl;
-                failed = true;
-            }
-
-            Posit<nbits, es> mul_mixed = a_mixed * b_mixed;
-            double mul_double = double(mul_mixed);
 
             double mul_diff = fabs(mul - mul_double);
             if (mul_diff > mul_max_diff)
@@ -81,8 +70,19 @@ int main(void)
                 failed = true;
             }
 
+            FloatX<nbits, es> mul_mixed = a_mixed * b_mixed;
+            double mul_double = double(mul_mixed);
+
+            double sub_diff = fabs(sub - sub_double);
+            if (sub_diff > sub_max_diff)
+            {
+                std::cout << "diff: " << sub_diff << " in: " << a << " - " << b << " = " << sub << std::endl;
+                std::cout << a_double << " - " << b_double << " = " << sub_double << std::endl;
+                failed = true;
+            }
+
             /*
-            Posit<nbits, es> div_mixed = a_mixed / b_mixed;
+            FloatX<nbits, es> div_mixed = a_mixed / b_mixed;
             double div_double = double(div_mixed);
 
             double div_diff = fabs(div - div_double);
@@ -93,7 +93,6 @@ int main(void)
                 failed = true;
             }
             */
-
             if (failed)
             {
                 std::cout << "failure" << std::endl;

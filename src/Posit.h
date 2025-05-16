@@ -149,15 +149,15 @@ public:
         encode(unpacked);
     }
 
-    operator float()
+    operator float() const
     {
 #pragma HLS INLINE
 
         unpacked_t unpacked = decode();
 
-        ap_uint<32> float_bits = 0;
+        ap_uint<32> bits = 0;
 
-        float_bits(31, 31) = unpacked.sign;
+        bits(31, 31) = unpacked.sign;
 
         ap_uint<8> exponent;
 
@@ -166,18 +166,18 @@ public:
         else
             exponent = unpacked.exp + unpacked.k * hls::pow(2, es) + hls::pow(2, 7) - 1;
 
-        float_bits(30, 23) = exponent;
+        bits(30, 23) = exponent;
 
         if (23 >= max_frac_size - 1)
-            float_bits(22, 22 - max_frac_size + 2) = unpacked.frac(max_frac_size - 2, 0);
+            bits(22, 22 - max_frac_size + 2) = unpacked.frac(max_frac_size - 2, 0);
         else
-            float_bits(22, 0) = unpacked.frac(max_frac_size - 2, max_frac_size - 2 - 22);
+            bits(22, 0) = unpacked.frac(max_frac_size - 2, max_frac_size - 2 - 22);
 
-        float fresult = *reinterpret_cast<float *>(&float_bits);
+        float fresult = *reinterpret_cast<float *>(&bits);
         return fresult;
     }
 
-    operator double()
+    operator double() const
     {
 #pragma HLS INLINE
 
@@ -245,7 +245,7 @@ public:
             frac2 = frac2 >> 1;
 
         // do addition
-        ap_fixed<max_frac_size + 3, 3> frac = frac1 + frac2;
+        ap_fixed<max_frac_size + 4, 3> frac = frac1 + frac2;
 
         // get sign and remove sign from frac
         bool sign;
@@ -442,15 +442,19 @@ private:
         int exp_end = hls::max(exp_start - es + 1, 0);
         int exp_len = exp_start - exp_end + 1;
 
+        unpacked.exp = 0;
+
         if (exp_len > 0)
             unpacked.exp(exp_len - 1, 0) = bits_(exp_start, exp_end);
-        else
-            unpacked.exp = 0;
+        //else
+        //    unpacked.exp = 0;
 
         // fraction bits
         int frac_start = exp_end - 1;
         int frac_end = 0;
         int frac_len = frac_start - frac_end + 1;
+
+        unpacked.frac = 0;
 
         // add leading 1
         if (reg_len == nbits - 1)
@@ -485,6 +489,7 @@ private:
             bits_[nbits - 1] = unpacked.sign;
             reg_bit = unpacked.k >= 0 ? 0 : 1;
             reg_len = unpacked.k >= 0 ? int(unpacked.k + 1) : int(-unpacked.k);
+            reg_len = hls::min(nbits - 1, reg_len);
         }
 
         int reg_start = nbits - 2;

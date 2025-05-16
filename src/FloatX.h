@@ -79,7 +79,7 @@ public:
 
         bool fsign = bits[63];
         // remove bias from floating point exponent
-        ap_int<11> fexponent = bits(62, 52) - hls::pow(2, 10) + 1;
+        ap_int<12> fexponent = bits(62, 52) - hls::pow(2, 10) + 1;
         // get mantisa from floating point
         ap_ufixed<53, 1> fmantissa;
         fmantissa[52] = 1;
@@ -101,7 +101,7 @@ public:
         encode(unpacked);
     }
 
-    operator float()
+    operator float() const
     {
 #pragma HLS INLINE
 
@@ -128,7 +128,7 @@ public:
         return fresult;
     }
 
-    operator double()
+    operator double() const
     {
 #pragma HLS INLINE
 
@@ -194,7 +194,7 @@ public:
             frac2 = frac2 >> 1;
 
         // do addition
-        ap_fixed<frac_size + 2, 3> frac = frac1 + frac2;
+        ap_fixed<frac_size + 3, 3> frac = frac1 + frac2;
 
         // get sign and remove sign from frac
         bool sign;
@@ -327,13 +327,28 @@ private:
         ap_uint<es> exp = bits_(nbits - 2, nbits - 1 - es);
         ap_uint<nbits - 1 - es> frac = bits_(nbits - 2 - es, 0);
 
-        unpacked.sign = sign;
+        bool isZero = false;
+        if (exp == 0 && frac == 0)
+            isZero = true;
+
+        if (isZero)
+            unpacked.sign = 0;
+        else
+            unpacked.sign = sign;
+
         // exponent bits
-        unpacked.exp = exp - hls::pow(2, es - 1) + 1;
+        if (isZero)
+            unpacked.exp = 0;
+        else
+            unpacked.exp = exp - hls::pow(2, es - 1) + 1;
 
         // fraction bits
         // add leading 1
-        unpacked.frac[frac_size - 1] = 1;
+        if (isZero)
+            unpacked.frac[frac_size - 1] = 0;
+        else
+            unpacked.frac[frac_size - 1] = 1;
+
         unpacked.frac(frac_size - 2, 0) = frac;
 
         return unpacked;
