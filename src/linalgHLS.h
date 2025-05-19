@@ -775,31 +775,31 @@ namespace linalgHLS
     public:
         SE3()
         {
-            rot_ = SO3<Type>();
+            so3_ = SO3<Type>();
             trans_ = Vec3<Type>(Type(0), Type(0), Type(0));
         }
 
         SE3(const SO3<Type> &r, const Vec3<Type> &t)
         {
-            rot_ = r;
+            so3_ = r;
             trans_ = t;
         }
 
         SE3(Type *r_data, Type *t_data)
         {
-            rot_ = SO3<Type>(r_data[0], r_data[1], r_data[2], r_data[3]);
+            so3_ = SO3<Type>(r_data[0], r_data[1], r_data[2], r_data[3]);
             trans_ = Vec3<Type>(t_data[0], t_data[1], t_data[2]);
         }
 
         void setQuaternion(const Quaternion<Type> &q)
         {
-            rot_.setQuaternion(q);
+            so3_.setQuaternion(q);
         }
 
         Mat4<Type> matrix() const
         {
             Mat4<Type> mat = Mat4<Type>::Zero();
-            Mat3<Type> R = rot_.matrix();
+            Mat3<Type> R = so3_.matrix();
         se3_matrix_loop_r:
             for (int r = 0; r < 3; r++)
 #pragma HLS UNROLL
@@ -817,7 +817,7 @@ namespace linalgHLS
         // Transform a point
         Vec3<Type> operator*(const Vec3<Type> &p) const
         {
-            return rot_ * p + trans_;
+            return so3_ * p + trans_;
         }
 
         // Composition of two SE3
@@ -825,8 +825,8 @@ namespace linalgHLS
         {
             // [R1|t1] [R2|t2] = [R1R2 | R1 t2 + t1]
             SE3<Type> out;
-            out.rot_ = rot_ * rhs.rot_;
-            out.trans_ = rot_ * rhs.trans_ + trans_;
+            out.so3_ = so3_ * rhs.so3_;
+            out.trans_ = so3_ * rhs.trans_ + trans_;
             return out;
         }
 
@@ -835,19 +835,19 @@ namespace linalgHLS
         {
             // Inv( [R|t] ) = [R^T | -R^T t]
             SE3<Type> inv;
-            inv.rot_ = rot_.inverse();
-            inv.trans_ = inv.rot_ * (trans_ * Type(-1));
+            inv.so3_ = so3_.inverse();
+            inv.trans_ = inv.so3_ * (trans_ * Type(-1));
             return inv;
         }
 
         // Get rotation, translation
-        SO3<Type> &rotation() { return rot_; }
-        const SO3<Type> &rotation() const { return rot_; }
+        SO3<Type> &so3() { return so3_; }
+        const SO3<Type> &so3() const { return so3_; }
         Vec3<Type> &translation() { return trans_; }
         const Vec3<Type> &translation() const { return trans_; }
 
     private:
-        SO3<Type> rot_;
+        SO3<Type> so3_;
         Vec3<Type> trans_;
     };
 
