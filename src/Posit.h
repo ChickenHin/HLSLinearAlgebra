@@ -112,12 +112,29 @@ public:
         fmantissa(51, 0) = bits(51, 0);
 
         bool psign = fsign;
-        ap_ufixed<max_frac_size, 1> pmantissa = fmantissa;
+        ap_ufixed<max_frac_size + 1, 2> pmantissa = fmantissa;
+
+        // round to nearest
+        if (fmantissa[51 - (max_frac_size - 1)] == 1)
+        {
+            ap_ufixed<max_frac_size, 1> one = 0;
+            one[0] = 1;
+            // if(pmantissa[0] == 0)
+            pmantissa += one;
+            // pmantissa[0] = 1;
+        }
 
         // get k and e from floating point exponent
         // init k = 0, and e = exponent
         ap_int<max_k_size> pk = 0;
         ap_int<9> pexponent = fexponent;
+
+        // normalize (necesary because of the rounding)
+        if (pmantissa >= 2.0)
+        {
+            pmantissa = pmantissa >> 1;
+            pexponent++;
+        }
 
         // force e to be in the allowed range (0 - 2**es-1)
         while (pexponent > hls::pow(2, es) - 1)
@@ -294,11 +311,36 @@ public:
             }
         }
 
+        // round to nearest
+        ap_ufixed<max_frac_size + 1, 2> rfrac = frac;
+        if (frac[max_frac_size + 4 - 4 - (max_frac_size - 1)] == 1)
+        {
+            ap_ufixed<max_frac_size, 1> one = 0;
+            one[0] = 1;
+            // if(pmantissa[0] == 0)
+            rfrac += one;
+            // pmantissa[0] = 1;
+        }
+
+        // normalize fraction (again)
+        if (rfrac >= 2)
+        {
+            rfrac = rfrac >> 1;
+            exp++;
+        }
+
+        // normalize exponent (again)
+        if (exp >= hls::pow(2, es))
+        {
+            exp -= hls::pow(2, es);
+            k++;
+        }
+
         unpacked_t out;
         out.sign = sign;
         out.k = k;
         out.exp = exp;
-        out.frac = frac;
+        out.frac = rfrac;
 
         Posit output;
         output.encode(out);
@@ -324,13 +366,14 @@ public:
         ap_uint<es + 1> exp = in1.exp + in2.exp;
         ap_ufixed<max_frac_size * 2, 2> frac = in1.frac * in2.frac;
 
-        // normalize
+        // normalize fraction
         if (frac >= 2)
         {
             frac = frac >> 1;
             exp++;
         }
 
+        // normalize exponent
         if (exp >= hls::pow(2, es))
         {
             exp -= hls::pow(2, es);
@@ -345,7 +388,8 @@ public:
         }
         */
 
-        if (frac(max_frac_size * 2 - 1, max_frac_size * 2 - 2) == 0)
+        // if (frac(max_frac_size * 2 - 1, max_frac_size * 2 - 2) == 0)
+        if (frac == 0)
         {
             sign = 0;
             k = 0;
@@ -353,11 +397,36 @@ public:
             frac = 0;
         }
 
+        // round to nearest
+        ap_ufixed<max_frac_size + 1, 2> rfrac = frac;
+        if (frac[max_frac_size * 2 - 3 - (max_frac_size - 1)] == 1)
+        {
+            ap_ufixed<max_frac_size, 1> one = 0;
+            one[0] = 1;
+            // if(pmantissa[0] == 0)
+            rfrac += one;
+            // pmantissa[0] = 1;
+        }
+
+        // normalize fraction (again)
+        if (rfrac >= 2)
+        {
+            rfrac = rfrac >> 1;
+            exp++;
+        }
+
+        // normalize exponent (again)
+        if (exp >= hls::pow(2, es))
+        {
+            exp -= hls::pow(2, es);
+            k++;
+        }
+
         unpacked_t out;
         out.sign = sign;
         out.k = k;
         out.exp = exp;
-        out.frac = frac;
+        out.frac = rfrac;
 
         Posit output;
         output.encode(out);
@@ -398,11 +467,36 @@ public:
             frac = 0;
         }
 
+        // round to nearest
+        ap_ufixed<max_frac_size + 1, 2> rfrac = frac;
+        if (frac[max_frac_size * 2 - 2 - (max_frac_size - 1)] == 1)
+        {
+            ap_ufixed<max_frac_size, 1> one = 0;
+            one[0] = 1;
+            // if(pmantissa[0] == 0)
+            rfrac += one;
+            // pmantissa[0] = 1;
+        }
+
+        // normalize fraction (again)
+        if (rfrac >= 2)
+        {
+            rfrac = rfrac >> 1;
+            exp++;
+        }
+
+        // normalize exponent (again)
+        if (exp >= hls::pow(2, es))
+        {
+            exp -= hls::pow(2, es);
+            k++;
+        }
+
         unpacked_t out;
         out.sign = sign;
         out.k = k;
         out.exp = exp;
-        out.frac = frac;
+        out.frac = rfrac;
 
         Posit output;
         output.encode(out);
@@ -446,8 +540,8 @@ private:
 
         if (exp_len > 0)
             unpacked.exp(exp_len - 1, 0) = bits_(exp_start, exp_end);
-        //else
-        //    unpacked.exp = 0;
+        // else
+        //     unpacked.exp = 0;
 
         // fraction bits
         int frac_start = exp_end - 1;

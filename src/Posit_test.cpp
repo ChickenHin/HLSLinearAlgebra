@@ -5,7 +5,7 @@
 #include "Posit.h"
 
 #define nbits 16
-#define es 2
+#define es 1
 
 int main(void)
 {
@@ -16,8 +16,8 @@ int main(void)
     double mul_max_diff = 0.0f;
     double div_max_diff = 0.0f;
 
-    double max = pow(2.0, 23);
-    double step = pow(2.0, 2);
+    double max = 2.0;//pow(2.0, 23);
+    double step = 0.01;//pow(2.0, 2);
 
     for (double a = -max; a < max; a += step)
     {
