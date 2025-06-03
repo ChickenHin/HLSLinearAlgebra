@@ -21,6 +21,8 @@ public:
         ap_uint<es> exp;
         // the max amount of bits for frac is nbits - 1 (sign) - 2 (min bits for k) - es;
         ap_ufixed<max_frac_size, 1> frac;
+        bool is_zero;
+        bool is_inf;
     };
 
     Posit()
@@ -39,6 +41,48 @@ public:
             bits_ = other.bits_;
         }
         return *this;
+    }
+
+    Posit(int c)
+    {
+#pragma HLS INLINE
+
+        bool psign = c > 0 ? 0 : 1;
+        ap_ufixed<max_frac_size, 1> pmantissa = 1.0;
+
+        // get k and e from floating point exponent
+        // init k = 0, and e = exponent
+        ap_int<max_k_size> pk = 0;
+        ap_int<9> pexponent = hls::log2(c);
+
+        // force e to be in the allowed range (0 - 2**es-1)
+        while (pexponent > hls::pow(2, es) - 1)
+        {
+            pexponent -= hls::pow(2, es);
+            pk++;
+        }
+
+        while (pexponent < 0)
+        {
+            pexponent += hls::pow(2, es);
+            pk--;
+        }
+
+        if (c == 0.0f)
+        {
+            psign = 0;
+            pmantissa = 0;
+            pexponent = 0;
+            pk = 0;
+        }
+
+        unpacked_t unpacked;
+        unpacked.sign = psign;
+        unpacked.frac = pmantissa;
+        unpacked.exp = pexponent;
+        unpacked.k = pk;
+
+        encode(unpacked);
     }
 
     Posit(float c)
@@ -220,6 +264,192 @@ public:
 
         double fresult = *reinterpret_cast<double *>(&bits);
         return fresult;
+    }
+
+    operator int() const
+    {
+#pragma HLS INLINE
+
+        unpacked_t unpacked = decode();
+
+        if (unpacked.frac == 0.0)
+        {
+            return 0;
+        }
+        else
+        {
+            int exponent = unpacked.k * hls::pow(2, es) + unpacked.exp;
+            int res = hls::pow(2, exponent);
+            if (unpacked.sign)
+            {
+                res = -res;
+            }
+            return res;
+        }
+    }
+
+    bool operator<(const Posit &rhs) const
+    {
+        unpacked_t unpacked_1 = decode();
+        unpacked_t unpacked_2 = rhs.decode();
+
+        if (unpacked_1.sign == unpacked_2.sign)
+        {
+            if (unpacked_1.k == unpacked_2.k)
+            {
+                if (unpacked_1.exp == unpacked_2.exp)
+                {
+                    if (unpacked_1.frac == unpacked_2.frac)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+
+                        return unpacked_1.sign != (unpacked_1.frac < unpacked_2.frac);
+                    }
+                }
+                else
+                {
+                    return unpacked_1.sign != (unpacked_1.exp < unpacked_2.exp);
+                }
+            }
+            else
+            {
+                return unpacked_1.sign != (unpacked_1.k < unpacked_2.k);
+            }
+        }
+        else
+        {
+            return unpacked_1.sign;
+        }
+    }
+
+    bool operator>(const Posit &rhs) const
+    {
+        unpacked_t unpacked_1 = decode();
+        unpacked_t unpacked_2 = rhs.decode();
+
+        if (unpacked_1.sign == unpacked_2.sign)
+        {
+            if (unpacked_1.k == unpacked_2.k)
+            {
+                if (unpacked_1.exp == unpacked_2.exp)
+                {
+                    if (unpacked_1.frac == unpacked_2.frac)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+
+                        return unpacked_1.sign != (unpacked_1.frac > unpacked_2.frac);
+                    }
+                }
+                else
+                {
+                    return unpacked_1.sign != (unpacked_1.exp > unpacked_2.exp);
+                }
+            }
+            else
+            {
+                return unpacked_1.sign != (unpacked_1.k > unpacked_2.k);
+            }
+        }
+        else
+        {
+            return !unpacked_1.sign;
+        }
+    }
+
+    bool operator<=(const Posit &rhs) const
+    {
+        unpacked_t unpacked_1 = decode();
+        unpacked_t unpacked_2 = rhs.decode();
+
+        if (unpacked_1.sign == unpacked_2.sign)
+        {
+            if (unpacked_1.k == unpacked_2.k)
+            {
+                if (unpacked_1.exp == unpacked_2.exp)
+                {
+                    if (unpacked_1.frac == unpacked_2.frac)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+
+                        return unpacked_1.sign != (unpacked_1.frac <= unpacked_2.frac);
+                    }
+                }
+                else
+                {
+                    return unpacked_1.sign != (unpacked_1.exp <= unpacked_2.exp);
+                }
+            }
+            else
+            {
+                return unpacked_1.sign != (unpacked_1.k <= unpacked_2.k);
+            }
+        }
+        else
+        {
+            return unpacked_1.sign;
+        }
+    }
+
+    bool operator>=(const Posit &rhs) const
+    {
+        unpacked_t unpacked_1 = decode();
+        unpacked_t unpacked_2 = rhs.decode();
+
+        if (unpacked_1.sign == unpacked_2.sign)
+        {
+            if (unpacked_1.k == unpacked_2.k)
+            {
+                if (unpacked_1.exp == unpacked_2.exp)
+                {
+                    if (unpacked_1.frac == unpacked_2.frac)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+
+                        return unpacked_1.sign != (unpacked_1.frac >= unpacked_2.frac);
+                    }
+                }
+                else
+                {
+                    return unpacked_1.sign != (unpacked_1.exp >= unpacked_2.exp);
+                }
+            }
+            else
+            {
+                return unpacked_1.sign != (unpacked_1.k >= unpacked_2.k);
+            }
+        }
+        else
+        {
+            return !unpacked_1.sign;
+        }
+    }
+
+    bool operator==(const Posit &rhs) const
+    {
+        if (bits_ == rhs.bits_)
+            return true;
+        else
+            return false;
+    }
+
+    bool operator!=(const Posit &rhs) const
+    {
+        if (bits_ != rhs.bits_)
+            return true;
+        else
+            return false;
     }
 
     Posit operator+(const Posit &rhs) const
@@ -436,72 +666,39 @@ public:
 
     Posit operator/(const Posit &rhs) const
     {
-        unpacked_t in1 = decode();
-        unpacked_t in2 = rhs.decode();
-
-        bool sign = in1.sign ^ in2.sign;
-        ap_int<max_k_size> k = in1.k - in2.k;
-        ap_int<es + 1> exp = in1.exp - in2.exp;
-        ap_ufixed<max_frac_size * 2, 1> frac1 = in1.frac;
-        ap_ufixed<max_frac_size * 2, 1> frac2 = in2.frac;
-        ap_ufixed<max_frac_size * 2, 1> frac = frac1 / frac2;
-
-        // normalize
-        if (frac < 1)
-        {
-            frac = frac << 1;
-            exp--;
-        }
+        unpacked_t in = rhs.decode();
+        unpacked_t out;
+        out.sign = in.sign;
+        ap_int<max_k_size> k = -in.k;
+        ap_int<es + 1> exp = -in.exp;
 
         if (exp < 0)
         {
             exp += hls::pow(2, es);
-            k--;
+            k -= 1;
         }
 
-        if (frac[max_frac_size * 2 - 1] == 0)
-        {
-            sign = 0;
-            k = 0;
-            exp = 0;
-            frac = 0;
-        }
-
-        // round to nearest
-        ap_ufixed<max_frac_size + 1, 2> rfrac = frac;
-        if (frac[max_frac_size * 2 - 2 - (max_frac_size - 1)] == 1)
-        {
-            ap_ufixed<max_frac_size, 1> one = 0;
-            one[0] = 1;
-            // if(pmantissa[0] == 0)
-            rfrac += one;
-            // pmantissa[0] = 1;
-        }
-
-        // normalize fraction (again)
-        if (rfrac >= 2)
-        {
-            rfrac = rfrac >> 1;
-            exp++;
-        }
-
-        // normalize exponent (again)
-        if (exp >= hls::pow(2, es))
-        {
-            exp -= hls::pow(2, es);
-            k++;
-        }
-
-        unpacked_t out;
-        out.sign = sign;
         out.k = k;
         out.exp = exp;
-        out.frac = rfrac;
 
-        Posit output;
-        output.encode(out);
+        if (in.is_zero)
+        {
+            out.is_zero = false;
+            out.is_inf = true;
+        }
+        else
+        {
+            out.is_zero = false;
+            out.is_inf = false;
+            out.frac = ap_ufixed<max_frac_size, 1>(1.0) / in.frac;
+        }
 
-        return output;
+        Posit inv;
+        inv.encode(out);
+
+        Posit result = (*this) * inv;
+
+        return result;
     }
 
 private:

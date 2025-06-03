@@ -4,29 +4,38 @@
 
 #include "Posit.h"
 
-#define nbits 16
-#define es 1
+#define nbits 32
+#define es 3
 
 int main(void)
 {
-    // std::cout << std::setprecision(20) << std::fixed;
+    std::cout << std::setprecision(20) << std::fixed;
 
     double add_max_diff = 0.0f;
     double sub_max_diff = 0.0f;
     double mul_max_diff = 0.0f;
-    double div_max_diff = 0.0f;
+    double div_max_diff = 0.1f;
 
-    double max = 2.0;//pow(2.0, 23);
-    double step = 0.01;//pow(2.0, 2);
+    double max = pow(2.0, 8);
+    double step = pow(2.0, 2);
 
     for (double a = -max; a < max; a += step)
     {
         for (double b = -max; b < max; b += step)
         {
+            // mat operations
             double add = a + b;
             double sub = a - b;
             double mul = a * b;
             double div = a / b;
+
+            // relational operations
+            bool less = a < b;
+            bool greater = a > b;
+            bool less_or_equal = a <= b;
+            bool greater_or_equal = a >= b;
+            bool equal = a == b;
+            bool not_equal = a != b;
 
             bool failed = false;
 
@@ -81,7 +90,6 @@ int main(void)
                 failed = true;
             }
 
-            /*
             Posit<nbits, es> div_mixed = a_mixed / b_mixed;
             double div_double = double(div_mixed);
 
@@ -92,7 +100,54 @@ int main(void)
                 std::cout << a_double << " / " << b_double << " = " << div_double << std::endl;
                 failed = true;
             }
-            */
+
+            bool less_mixed = a_mixed < b_mixed;
+            if (less != less_mixed)
+            {
+                std::cout << "error: in: " << a << " < " << b << " = " << less << std::endl;
+                std::cout << a_double << " < " << b_double << " = " << less_mixed << std::endl;
+                failed = true;
+            }
+
+            bool greater_mixed = a_mixed > b_mixed;
+            if (greater != greater_mixed)
+            {
+                std::cout << "error: in: " << a << " > " << b << " = " << greater << std::endl;
+                std::cout << a_double << " > " << b_double << " = " << greater_mixed << std::endl;
+                failed = true;
+            }
+
+            bool less_or_equal_mixed = a_mixed <= b_mixed;
+            if (less_or_equal != less_or_equal_mixed)
+            {
+                std::cout << "error: in: " << a << " <= " << b << " = " << less_or_equal << std::endl;
+                std::cout << a_double << " <= " << b_double << " = " << less_or_equal_mixed << std::endl;
+                failed = true;
+            }
+
+            bool greater_or_equal_mixed = a_mixed >= b_mixed;
+            if (less_or_equal != less_or_equal_mixed)
+            {
+                std::cout << "error: in: " << a << " >= " << b << " = " << greater_or_equal << std::endl;
+                std::cout << a_double << " >= " << b_double << " = " << greater_or_equal_mixed << std::endl;
+                failed = true;
+            }
+
+            bool equal_mixed = a_mixed == b_mixed;
+            if (equal != equal_mixed)
+            {
+                std::cout << "error: in: " << a << " == " << b << " = " << equal << std::endl;
+                std::cout << a_double << " == " << b_double << " = " << equal_mixed << std::endl;
+                failed = true;
+            }
+
+            bool not_equal_mixed = a_mixed != b_mixed;
+            if (not_equal != not_equal_mixed)
+            {
+                std::cout << "error: in: " << a << " != " << b << " = " << not_equal << std::endl;
+                std::cout << a_double << " != " << b_double << " = " << not_equal_mixed << std::endl;
+                failed = true;
+            }
 
             if (failed)
             {
