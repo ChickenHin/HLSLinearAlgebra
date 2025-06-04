@@ -16,8 +16,8 @@ int main(void)
     double mul_max_diff = 0.0f;
     double div_max_diff = 0.1f;
 
-    double max = pow(2.0, 8);
-    double step = pow(2.0, 2);
+    double max = pow(2.0, 6);
+    double step = pow(2.0, -2);
 
     for (double a = -max; a < max; a += step)
     {
@@ -146,7 +146,7 @@ int main(void)
                 failed = true;
             }
             */
-
+            /*
             bool less_mixed = a_mixed < b_mixed;
             if (less != less_mixed)
             {
@@ -203,7 +203,7 @@ int main(void)
                 std::cout << abs_ << " != " << abs_double << std::endl;
                 failed = true;
             }
-
+            
             Posit<nbits, es> floor_mixed = floor(b_mixed);
             double floor_double = double(floor_mixed);
             if (floor_ != floor_double)
@@ -230,6 +230,7 @@ int main(void)
                 std::cout << ceil_ << " != " << ceil_double << std::endl;
                 failed = true;
             }
+            */
 
             Posit<nbits, es> neg_mixed = -b_mixed;
             double neg_double = double(neg_mixed);

@@ -9,7 +9,7 @@ namespace detail
     // 2^k for *integer* k
     constexpr float pow2(int k)
     {
-//#pragma HLS INLINE
+        // #pragma HLS INLINE
         return k >= 0 ? (1u << k) : 1.0f / (1u << (-k));
     }
 
@@ -39,10 +39,12 @@ template <int nbits, int es>
 class Posit
 {
 public:
-    // static constexpr int max_k_size = nbits - 1; // hls::log2(nbits - 1);
-    static constexpr int max_k_size = detail::clog2<nbits - 1>::value;
+    static constexpr int max_k_size = nbits - 1;
+    // static constexpr int max_k_size = detail::clog2<nbits - 1>::value;
     static constexpr int max_frac_size = nbits - 3 - es + 1;
-    // static constexpr int max_exp_val = hls::pow(2, es) - 1; // max value for exponent
+    static constexpr int max_exp_val = 2 << (es - 1); // pow(2, es),  max value for exponent
+    static constexpr int float_exp_bias = 127;        // pow(2, 7) - 1;
+    static constexpr int double_exp_bias = 1023;      // pow(2, 10) -1;
 
     struct posit_unpacked
     {
@@ -81,38 +83,31 @@ public:
 
     Posit(int c)
     {
-//#pragma HLS INLINE
+        // #pragma HLS INLINE
 
-        bool psign = c > 0 ? 0 : 1;
-        ap_ufixed<max_frac_size, 1> pmantissa = 1.0;
+        bool psign = c >= 0 ? 0 : 1;
+
+        // mantissa is just zeros
+        ap_ufixed<2, 1> pmantissa;
+        
+        if(c == 0)
+            pmantissa[1] = 0.0;
+        else
+            pmantissa[1] = 1.0;
+
+        ap_int<9> fexponent = hls::log2(c);
 
         // get k and e from floating point exponent
-        // init k = 0, and e = exponent
-        ap_int<max_k_size> pk = 0;
-        ap_int<9> pexponent = hls::log2(c);
+        // How many times each exponent over - or under - flowed the valid interval
+        ap_int<max_k_size> pk = fexponent / max_exp_val; // works for negatives too
 
-    // force e to be in the allowed range (0 - 2**es-1)
-    Posit_int_while_1:
-        while (pexponent > (2 << es) /*hls::pow(2, es)*/ - 1)
-        {
-            pexponent -= (2 << es) /*hls::pow(2, es)*/;
-            pk++;
-        }
+        // New exponent in the allowed range (0, max_exp_val - 1)
+        ap_int<9> pexponent = fexponent % max_exp_val;
 
-    Posit_int_while_2:
-        while (pexponent < 0)
-        {
-            pexponent += (2 << es) /*hls::pow(2, es)*/;
-            pk--;
-        }
-
-        if (c == 0.0f)
-        {
-            psign = 0;
-            pmantissa = 0;
-            pexponent = 0;
-            pk = 0;
-        }
+        // If `a` and `b` have opposite signs and the remainder is non-zero,
+        // the truncated result is too large; subtract one to get the floor.
+        if (pexponent < 0)
+            --pk;
 
         posit_unpacked unpacked;
         unpacked.sign = psign;
@@ -125,51 +120,13 @@ public:
 
     Posit(unsigned int c)
     {
-//#pragma HLS INLINE
-
-        bool psign = c > 0 ? 0 : 1;
-        ap_ufixed<max_frac_size, 1> pmantissa = 1.0;
-
-        // get k and e from floating point exponent
-        // init k = 0, and e = exponent
-        ap_int<max_k_size> pk = 0;
-        ap_int<9> pexponent = hls::log2(c);
-
-    // force e to be in the allowed range (0 - 2**es-1)
-    Posit_uint_while_1:
-        while (pexponent > (2 << es) /*hls::pow(2, es)*/ - 1)
-        {
-            pexponent -= (2 << es) /*hls::pow(2, es)*/;
-            pk++;
-        }
-
-    Posit_uint_while_2:
-        while (pexponent < 0)
-        {
-            pexponent += (2 << es) /*hls::pow(2, es)*/;
-            pk--;
-        }
-
-        if (c == 0.0f)
-        {
-            psign = 0;
-            pmantissa = 0;
-            pexponent = 0;
-            pk = 0;
-        }
-
-        posit_unpacked unpacked;
-        unpacked.sign = psign;
-        unpacked.frac = pmantissa;
-        unpacked.exp = pexponent;
-        unpacked.k = pk;
-
-        encode(unpacked);
+        // #pragma HLS INLINE
+        *this = Posit(int(c));
     }
 
     Posit(float c)
     {
-//#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         ap_uint<32> bits = *reinterpret_cast<ap_uint<32> *>(&c);
         // unsigned int* bitsPtr = (unsigned int*)&c;
@@ -177,42 +134,50 @@ public:
 
         bool fsign = bits[31];
         // remove bias from floating point exponent
-        ap_int<9> fexponent = bits(30, 23) - (2 << 7) /*hls::pow(2, 7)*/ + 1;
+        ap_int<9> fexponent = bits(30, 23) - float_exp_bias;
         // get mantisa from floating point
         ap_ufixed<24, 1> fmantissa;
-        fmantissa[23] = 1;
+        
+        if(c == 0.0f)
+            fmantissa[23] = 0;
+        else
+            fmantissa[23] = 1;
+        
         fmantissa(22, 0) = bits(22, 0);
 
+        // get sign from float sign
         bool psign = fsign;
-        ap_ufixed<max_frac_size, 1> pmantissa = fmantissa;
+
+        ap_ufixed<max_frac_size + 1, 2> pmantissa = fmantissa;
+
+        // round to nearest
+        if (fmantissa[22 - (max_frac_size - 1)] == 1)
+        {
+            ap_ufixed<max_frac_size, 1> one = 0;
+            one[0] = 1;
+            // if(pmantissa[0] == 0)
+            pmantissa += one;
+            // pmantissa[0] = 1;
+        }
+
+        // normalize (necesary because of the rounding)
+        if (pmantissa >= 2.0)
+        {
+            pmantissa = pmantissa >> 1;
+            fexponent++;
+        }
 
         // get k and e from floating point exponent
-        // init k = 0, and e = exponent
-        ap_int<max_k_size> pk = 0;
-        ap_int<9> pexponent = fexponent;
+        // How many times each exponent over - or under - flowed the valid interval
+        ap_int<max_k_size> pk = fexponent / max_exp_val; // works for negatives too
 
-    // force e to be in the allowed range (0 - 2**es-1)
-    Posit_float_while_1:
-        while (pexponent > (2 << es) /*hls::pow(2, es)*/ - 1)
-        {
-            pexponent -= (2 << es) /*hls::pow(2, es)*/;
-            pk++;
-        }
+        // New exponent in the allowed range (0, max_exp_val - 1)
+        ap_int<9> pexponent = fexponent % max_exp_val;
 
-    Posit_float_while_2:
-        while (pexponent < 0)
-        {
-            pexponent += (2 << es) /*hls::pow(2, es)*/;
-            pk--;
-        }
-
-        if (c == 0.0f)
-        {
-            psign = 0;
-            pmantissa = 0;
-            pexponent = 0;
-            pk = 0;
-        }
+        // If `a` and `b` have opposite signs and the remainder is non-zero,
+        // the truncated result is too large; subtract one to get the floor.
+        if (pexponent < 0)
+            --pk;
 
         posit_unpacked unpacked;
         unpacked.sign = psign;
@@ -225,7 +190,7 @@ public:
 
     Posit(double c)
     {
-//#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         ap_uint<64> bits = *reinterpret_cast<ap_uint<64> *>(&c);
         // unsigned int* bitsPtr = (unsigned int*)&c;
@@ -233,13 +198,21 @@ public:
 
         bool fsign = bits[63];
         // remove bias from floating point exponent
-        ap_int<12> fexponent = bits(62, 52) - (2 << 10) /*hls::pow(2, 10)*/ + 1;
+        ap_int<12> fexponent = bits(62, 52) - double_exp_bias;
         // get mantisa from floating point
         ap_ufixed<53, 1> fmantissa;
-        fmantissa[52] = 1;
+        
+        if(c == 0.0)
+            fmantissa[52] = 0;
+        else
+            fmantissa[52] = 1;
+
         fmantissa(51, 0) = bits(51, 0);
 
+        // get sign from double sign
         bool psign = fsign;
+
+        // get mantissa from double mantissa
         ap_ufixed<max_frac_size + 1, 2> pmantissa = fmantissa;
 
         // round to nearest
@@ -252,40 +225,24 @@ public:
             // pmantissa[0] = 1;
         }
 
-        // get k and e from floating point exponent
-        // init k = 0, and e = exponent
-        ap_int<max_k_size> pk = 0;
-        ap_int<9> pexponent = fexponent;
-
         // normalize (necesary because of the rounding)
         if (pmantissa >= 2.0)
         {
             pmantissa = pmantissa >> 1;
-            pexponent++;
+            fexponent++;
         }
 
-    // force e to be in the allowed range (0 - 2**es-1)
-    Posit_double_while_1:
-        while (pexponent > (2 << es) /*hls::pow(2, es)*/ - 1)
-        {
-            pexponent -= (2 << es) /*hls::pow(2, es)*/;
-            pk++;
-        }
+        // get k and e from floating point exponent
+        // How many times each exponent over - or under - flowed the valid interval
+        ap_int<max_k_size> pk = fexponent / max_exp_val; // works for negatives too
 
-    Posit_double_while_2:
-        while (pexponent < 0)
-        {
-            pexponent += (2 << es) /*hls::pow(2, es)*/;
-            pk--;
-        }
+        // New exponent in the allowed range (0, max_exp_val - 1)
+        ap_int<9> pexponent = fexponent % max_exp_val;
 
-        if (c == 0.0f)
-        {
-            psign = 0;
-            pmantissa = 0;
-            pexponent = 0;
-            pk = 0;
-        }
+        // If `a` and `b` have opposite signs and the remainder is non-zero,
+        // the truncated result is too large; subtract one to get the floor.
+        if (pexponent < 0)
+            --pk;
 
         posit_unpacked unpacked;
         unpacked.sign = psign;
@@ -298,7 +255,7 @@ public:
 
     operator float() const
     {
-//#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         posit_unpacked unpacked = decode();
 
@@ -311,7 +268,7 @@ public:
         if (unpacked.frac[max_frac_size - 1] == 0)
             exponent = 0;
         else
-            exponent = unpacked.exp + unpacked.k * (2 << es) /*hls::pow(2, es)*/ + (2 << 7) /*hls::pow(2, 7)*/ - 1;
+            exponent = unpacked.exp + unpacked.k * max_exp_val + float_exp_bias;
 
         bits(30, 23) = exponent;
 
@@ -326,7 +283,7 @@ public:
 
     operator double() const
     {
-//#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         posit_unpacked unpacked = decode();
 
@@ -339,7 +296,7 @@ public:
         if (unpacked.frac[max_frac_size - 1] == 0)
             exponent = 0;
         else
-            exponent = unpacked.exp + unpacked.k * (2 << es) /*hls::pow(2, es)*/ + (2 << 10) /*hls::pow(2, 10)*/ - 1;
+            exponent = unpacked.exp + unpacked.k * max_exp_val + double_exp_bias;
 
         bits(62, 52) = exponent;
 
@@ -354,7 +311,7 @@ public:
 
     operator int() const
     {
-//#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         posit_unpacked unpacked = decode();
 
@@ -364,7 +321,7 @@ public:
         }
         else
         {
-            int exponent = unpacked.k * (2 << es) /*hls::pow(2, es)*/ + unpacked.exp;
+            int exponent = unpacked.k * max_exp_val /*hls::pow(2, es)*/ + unpacked.exp;
             int res = (2 << exponent) /*hls::pow(2, exponent)*/;
             if (unpacked.sign)
             {
@@ -389,7 +346,7 @@ public:
     {
         // floor to nearest
         posit_unpacked unpacked = decode();
-        ap_int<max_k_size + 1> exp = unpacked.k * (2 << es) /*hls::pow(2, es)*/ + unpacked.exp;
+        ap_int<max_k_size + 1> exp = unpacked.k * max_exp_val + unpacked.exp;
 
         ap_fixed<max_frac_size * 2, max_frac_size> frac = unpacked.frac;
         frac = frac << exp;
@@ -408,7 +365,7 @@ public:
     {
         // round to nearest
         posit_unpacked unpacked = decode();
-        ap_int<max_k_size + 1> exp = unpacked.k * (2 << es) /*hls::pow(2, es)*/ + unpacked.exp;
+        ap_int<max_k_size + 1> exp = unpacked.k * max_exp_val + unpacked.exp;
 
         ap_fixed<max_frac_size * 2, max_frac_size> frac = unpacked.frac;
         frac = frac << exp;
@@ -427,7 +384,7 @@ public:
     {
         // round to nearest
         posit_unpacked unpacked = decode();
-        ap_int<max_k_size + 1> exp = unpacked.k * (2 << es) /*hls::pow(2, es)*/ + unpacked.exp;
+        ap_int<max_k_size + 1> exp = unpacked.k * max_exp_val + unpacked.exp;
 
         ap_fixed<max_frac_size * 2, max_frac_size> frac = unpacked.frac;
         frac = frac << exp;
@@ -643,7 +600,7 @@ public:
         posit_unpacked in2 = rhs.decode();
 
         // set biggest posit to be in1
-        ap_int<max_k_size + es> diff_texp = (in1.k - in2.k) * (2 << es) /*hls::pow(2, es)*/ + in1.exp - in2.exp;
+        ap_int<max_k_size + es> diff_texp = (in1.k - in2.k) * max_exp_val + in1.exp - in2.exp;
 
         if (diff_texp < 0)
         {
@@ -673,8 +630,9 @@ public:
             frac2 = frac2;
 
         // shift left in2, so that both have the same exponent
-        for (int i = 0; i < diff_texp; i++)
-            frac2 = frac2 >> 1;
+        //for (int i = 0; i < diff_texp; i++)
+        //    frac2 = frac2 >> 1;
+        frac2 = frac2 >> diff_texp;
 
         // do addition
         ap_fixed<max_frac_size + 4, 3> frac = frac1 + frac2;
@@ -716,16 +674,16 @@ public:
             }
 
         Posit_add_while_3:
-            while (exp >= (2 << es) /*hls::pow(2, es)*/)
+            while (exp >= max_exp_val /*hls::pow(2, es)*/)
             {
-                exp -= (2 << es) /*hls::pow(2, es)*/;
+                exp -= max_exp_val /*hls::pow(2, es)*/;
                 k++;
             }
 
         Posit_add_while_4:
             while (exp < 0)
             {
-                exp += (2 << es) /*hls::pow(2, es)*/;
+                exp += max_exp_val /*hls::pow(2, es)*/;
                 k--;
             }
         }
@@ -749,9 +707,9 @@ public:
         }
 
         // normalize exponent (again)
-        if (exp >= (2 << es) /*hls::pow(2, es)*/)
+        if (exp >= max_exp_val /*hls::pow(2, es)*/)
         {
-            exp -= (2 << es) /*hls::pow(2, es)*/;
+            exp -= max_exp_val /*hls::pow(2, es)*/;
             k++;
         }
 
@@ -793,9 +751,9 @@ public:
         }
 
         // normalize exponent
-        if (exp >= (2 << es) /*hls::pow(2, es)*/)
+        if (exp >= max_exp_val)
         {
-            exp -= (2 << es) /*hls::pow(2, es)*/;
+            exp -= max_exp_val;
             k++;
         }
 
@@ -835,9 +793,9 @@ public:
         }
 
         // normalize exponent (again)
-        if (exp >= (2 << es) /*hls::pow(2, es)*/)
+        if (exp >= max_exp_val)
         {
-            exp -= (2 << es) /*hls::pow(2, es)*/;
+            exp -= max_exp_val;
             k++;
         }
 
@@ -863,7 +821,7 @@ public:
 
         if (exp < 0)
         {
-            exp += (2 << es) /*hls::pow(2, es)*/;
+            exp += max_exp_val /*hls::pow(2, es)*/;
             k -= 1;
         }
 
