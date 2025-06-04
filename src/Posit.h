@@ -4,14 +4,47 @@
 #include "ap_int.h"   //to use ap_int vitis hls data type
 #include "ap_fixed.h" //in case we want to use vitis hls fixed point data type
 
+namespace detail
+{
+    // 2^k for *integer* k
+    constexpr float pow2(int k)
+    {
+//#pragma HLS INLINE
+        return k >= 0 ? (1u << k) : 1.0f / (1u << (-k));
+    }
+
+    // Compile‑time ceil(log2(N))
+    // Usage: clog2<17>::value == 5 (because 2^4 < 17 ≤ 2^5)
+    // Works for N≥1.
+    template <int N, bool done = (N <= 1)>
+    struct clog2_helper
+    {
+        static constexpr int value = 1 + clog2_helper<(N >> 1)>::value;
+    };
+    template <int N>
+    struct clog2_helper<N, true>
+    {
+        static constexpr int value = 0;
+    };
+
+    template <int N>
+    struct clog2
+    {
+        static constexpr int value = clog2_helper<N>::value;
+    };
+
+} // namespace detail
+
 template <int nbits, int es>
 class Posit
 {
 public:
-    static constexpr int max_k_size = nbits - 1; // hls::log2(nbits - 1);
+    // static constexpr int max_k_size = nbits - 1; // hls::log2(nbits - 1);
+    static constexpr int max_k_size = detail::clog2<nbits - 1>::value;
     static constexpr int max_frac_size = nbits - 3 - es + 1;
+    // static constexpr int max_exp_val = hls::pow(2, es) - 1; // max value for exponent
 
-    struct unpacked_t
+    struct posit_unpacked
     {
         bool sign;
         // the max amount of bits for r is nbits-1 bits, nbits-2 bits beeing 0 (or 1), and the last beeing 1 (or 0)
@@ -36,16 +69,19 @@ public:
 
     Posit &operator=(const Posit &other)
     {
+        bits_ = other.bits_;
+        /*
         if (this != &other)
         {
             bits_ = other.bits_;
         }
+        */
         return *this;
     }
 
     Posit(int c)
     {
-#pragma HLS INLINE
+//#pragma HLS INLINE
 
         bool psign = c > 0 ? 0 : 1;
         ap_ufixed<max_frac_size, 1> pmantissa = 1.0;
@@ -55,16 +91,18 @@ public:
         ap_int<max_k_size> pk = 0;
         ap_int<9> pexponent = hls::log2(c);
 
-        // force e to be in the allowed range (0 - 2**es-1)
-        while (pexponent > hls::pow(2, es) - 1)
+    // force e to be in the allowed range (0 - 2**es-1)
+    Posit_int_while_1:
+        while (pexponent > (2 << es) /*hls::pow(2, es)*/ - 1)
         {
-            pexponent -= hls::pow(2, es);
+            pexponent -= (2 << es) /*hls::pow(2, es)*/;
             pk++;
         }
 
+    Posit_int_while_2:
         while (pexponent < 0)
         {
-            pexponent += hls::pow(2, es);
+            pexponent += (2 << es) /*hls::pow(2, es)*/;
             pk--;
         }
 
@@ -76,7 +114,51 @@ public:
             pk = 0;
         }
 
-        unpacked_t unpacked;
+        posit_unpacked unpacked;
+        unpacked.sign = psign;
+        unpacked.frac = pmantissa;
+        unpacked.exp = pexponent;
+        unpacked.k = pk;
+
+        encode(unpacked);
+    }
+
+    Posit(unsigned int c)
+    {
+//#pragma HLS INLINE
+
+        bool psign = c > 0 ? 0 : 1;
+        ap_ufixed<max_frac_size, 1> pmantissa = 1.0;
+
+        // get k and e from floating point exponent
+        // init k = 0, and e = exponent
+        ap_int<max_k_size> pk = 0;
+        ap_int<9> pexponent = hls::log2(c);
+
+    // force e to be in the allowed range (0 - 2**es-1)
+    Posit_uint_while_1:
+        while (pexponent > (2 << es) /*hls::pow(2, es)*/ - 1)
+        {
+            pexponent -= (2 << es) /*hls::pow(2, es)*/;
+            pk++;
+        }
+
+    Posit_uint_while_2:
+        while (pexponent < 0)
+        {
+            pexponent += (2 << es) /*hls::pow(2, es)*/;
+            pk--;
+        }
+
+        if (c == 0.0f)
+        {
+            psign = 0;
+            pmantissa = 0;
+            pexponent = 0;
+            pk = 0;
+        }
+
+        posit_unpacked unpacked;
         unpacked.sign = psign;
         unpacked.frac = pmantissa;
         unpacked.exp = pexponent;
@@ -87,7 +169,7 @@ public:
 
     Posit(float c)
     {
-#pragma HLS INLINE
+//#pragma HLS INLINE
 
         ap_uint<32> bits = *reinterpret_cast<ap_uint<32> *>(&c);
         // unsigned int* bitsPtr = (unsigned int*)&c;
@@ -95,7 +177,7 @@ public:
 
         bool fsign = bits[31];
         // remove bias from floating point exponent
-        ap_int<9> fexponent = bits(30, 23) - hls::pow(2, 7) + 1;
+        ap_int<9> fexponent = bits(30, 23) - (2 << 7) /*hls::pow(2, 7)*/ + 1;
         // get mantisa from floating point
         ap_ufixed<24, 1> fmantissa;
         fmantissa[23] = 1;
@@ -109,16 +191,18 @@ public:
         ap_int<max_k_size> pk = 0;
         ap_int<9> pexponent = fexponent;
 
-        // force e to be in the allowed range (0 - 2**es-1)
-        while (pexponent > hls::pow(2, es) - 1)
+    // force e to be in the allowed range (0 - 2**es-1)
+    Posit_float_while_1:
+        while (pexponent > (2 << es) /*hls::pow(2, es)*/ - 1)
         {
-            pexponent -= hls::pow(2, es);
+            pexponent -= (2 << es) /*hls::pow(2, es)*/;
             pk++;
         }
 
+    Posit_float_while_2:
         while (pexponent < 0)
         {
-            pexponent += hls::pow(2, es);
+            pexponent += (2 << es) /*hls::pow(2, es)*/;
             pk--;
         }
 
@@ -130,7 +214,7 @@ public:
             pk = 0;
         }
 
-        unpacked_t unpacked;
+        posit_unpacked unpacked;
         unpacked.sign = psign;
         unpacked.frac = pmantissa;
         unpacked.exp = pexponent;
@@ -141,7 +225,7 @@ public:
 
     Posit(double c)
     {
-#pragma HLS INLINE
+//#pragma HLS INLINE
 
         ap_uint<64> bits = *reinterpret_cast<ap_uint<64> *>(&c);
         // unsigned int* bitsPtr = (unsigned int*)&c;
@@ -149,7 +233,7 @@ public:
 
         bool fsign = bits[63];
         // remove bias from floating point exponent
-        ap_int<12> fexponent = bits(62, 52) - hls::pow(2, 10) + 1;
+        ap_int<12> fexponent = bits(62, 52) - (2 << 10) /*hls::pow(2, 10)*/ + 1;
         // get mantisa from floating point
         ap_ufixed<53, 1> fmantissa;
         fmantissa[52] = 1;
@@ -180,16 +264,18 @@ public:
             pexponent++;
         }
 
-        // force e to be in the allowed range (0 - 2**es-1)
-        while (pexponent > hls::pow(2, es) - 1)
+    // force e to be in the allowed range (0 - 2**es-1)
+    Posit_double_while_1:
+        while (pexponent > (2 << es) /*hls::pow(2, es)*/ - 1)
         {
-            pexponent -= hls::pow(2, es);
+            pexponent -= (2 << es) /*hls::pow(2, es)*/;
             pk++;
         }
 
+    Posit_double_while_2:
         while (pexponent < 0)
         {
-            pexponent += hls::pow(2, es);
+            pexponent += (2 << es) /*hls::pow(2, es)*/;
             pk--;
         }
 
@@ -201,7 +287,7 @@ public:
             pk = 0;
         }
 
-        unpacked_t unpacked;
+        posit_unpacked unpacked;
         unpacked.sign = psign;
         unpacked.frac = pmantissa;
         unpacked.exp = pexponent;
@@ -212,9 +298,9 @@ public:
 
     operator float() const
     {
-#pragma HLS INLINE
+//#pragma HLS INLINE
 
-        unpacked_t unpacked = decode();
+        posit_unpacked unpacked = decode();
 
         ap_uint<32> bits = 0;
 
@@ -225,7 +311,7 @@ public:
         if (unpacked.frac[max_frac_size - 1] == 0)
             exponent = 0;
         else
-            exponent = unpacked.exp + unpacked.k * hls::pow(2, es) + hls::pow(2, 7) - 1;
+            exponent = unpacked.exp + unpacked.k * (2 << es) /*hls::pow(2, es)*/ + (2 << 7) /*hls::pow(2, 7)*/ - 1;
 
         bits(30, 23) = exponent;
 
@@ -240,9 +326,9 @@ public:
 
     operator double() const
     {
-#pragma HLS INLINE
+//#pragma HLS INLINE
 
-        unpacked_t unpacked = decode();
+        posit_unpacked unpacked = decode();
 
         ap_uint<64> bits = 0;
 
@@ -253,7 +339,7 @@ public:
         if (unpacked.frac[max_frac_size - 1] == 0)
             exponent = 0;
         else
-            exponent = unpacked.exp + unpacked.k * hls::pow(2, es) + hls::pow(2, 10) - 1;
+            exponent = unpacked.exp + unpacked.k * (2 << es) /*hls::pow(2, es)*/ + (2 << 10) /*hls::pow(2, 10)*/ - 1;
 
         bits(62, 52) = exponent;
 
@@ -268,9 +354,9 @@ public:
 
     operator int() const
     {
-#pragma HLS INLINE
+//#pragma HLS INLINE
 
-        unpacked_t unpacked = decode();
+        posit_unpacked unpacked = decode();
 
         if (unpacked.frac == 0.0)
         {
@@ -278,8 +364,8 @@ public:
         }
         else
         {
-            int exponent = unpacked.k * hls::pow(2, es) + unpacked.exp;
-            int res = hls::pow(2, exponent);
+            int exponent = unpacked.k * (2 << es) /*hls::pow(2, es)*/ + unpacked.exp;
+            int res = (2 << exponent) /*hls::pow(2, exponent)*/;
             if (unpacked.sign)
             {
                 res = -res;
@@ -288,10 +374,109 @@ public:
         }
     }
 
+    Posit fabs() const
+    {
+        Posit result = *this;
+        if (result.bits_[nbits - 1] == 1)
+        {
+            result.bits_[nbits - 1] = 0; // set sign bit to 0
+        }
+
+        return result;
+    }
+
+    Posit floor() const
+    {
+        // floor to nearest
+        posit_unpacked unpacked = decode();
+        ap_int<max_k_size + 1> exp = unpacked.k * (2 << es) /*hls::pow(2, es)*/ + unpacked.exp;
+
+        ap_fixed<max_frac_size * 2, max_frac_size> frac = unpacked.frac;
+        frac = frac << exp;
+        frac = hls::floor(frac);
+        frac = frac >> exp;
+
+        unpacked.frac = frac;
+
+        Posit result;
+        result.encode(unpacked);
+
+        return result;
+    }
+
+    Posit round() const
+    {
+        // round to nearest
+        posit_unpacked unpacked = decode();
+        ap_int<max_k_size + 1> exp = unpacked.k * (2 << es) /*hls::pow(2, es)*/ + unpacked.exp;
+
+        ap_fixed<max_frac_size * 2, max_frac_size> frac = unpacked.frac;
+        frac = frac << exp;
+        frac = hls::round(frac);
+        frac = frac >> exp;
+
+        unpacked.frac = frac;
+
+        Posit result;
+        result.encode(unpacked);
+
+        return result;
+    }
+
+    Posit ceil() const
+    {
+        // round to nearest
+        posit_unpacked unpacked = decode();
+        ap_int<max_k_size + 1> exp = unpacked.k * (2 << es) /*hls::pow(2, es)*/ + unpacked.exp;
+
+        ap_fixed<max_frac_size * 2, max_frac_size> frac = unpacked.frac;
+        frac = frac << exp;
+        frac = hls::ceil(frac);
+        frac = frac >> exp;
+
+        unpacked.frac = frac;
+
+        Posit result;
+        result.encode(unpacked);
+
+        return result;
+    }
+
+    Posit operator-() const
+    {
+        Posit result = *this;
+        result.bits_[nbits - 1] = !result.bits_[nbits - 1];
+        return result;
+    }
+
+    Posit &operator+=(const Posit &other)
+    {
+        *this = *this + other;
+        return *this;
+    }
+
+    Posit &operator-=(const Posit &other)
+    {
+        *this = *this - other;
+        return *this;
+    }
+
+    Posit &operator*=(const Posit &other)
+    {
+        *this = *this * other;
+        return *this;
+    }
+
+    Posit &operator/=(const Posit &other)
+    {
+        *this = *this / other;
+        return *this;
+    }
+
     bool operator<(const Posit &rhs) const
     {
-        unpacked_t unpacked_1 = decode();
-        unpacked_t unpacked_2 = rhs.decode();
+        posit_unpacked unpacked_1 = decode();
+        posit_unpacked unpacked_2 = rhs.decode();
 
         if (unpacked_1.sign == unpacked_2.sign)
         {
@@ -327,8 +512,8 @@ public:
 
     bool operator>(const Posit &rhs) const
     {
-        unpacked_t unpacked_1 = decode();
-        unpacked_t unpacked_2 = rhs.decode();
+        posit_unpacked unpacked_1 = decode();
+        posit_unpacked unpacked_2 = rhs.decode();
 
         if (unpacked_1.sign == unpacked_2.sign)
         {
@@ -364,8 +549,8 @@ public:
 
     bool operator<=(const Posit &rhs) const
     {
-        unpacked_t unpacked_1 = decode();
-        unpacked_t unpacked_2 = rhs.decode();
+        posit_unpacked unpacked_1 = decode();
+        posit_unpacked unpacked_2 = rhs.decode();
 
         if (unpacked_1.sign == unpacked_2.sign)
         {
@@ -401,8 +586,8 @@ public:
 
     bool operator>=(const Posit &rhs) const
     {
-        unpacked_t unpacked_1 = decode();
-        unpacked_t unpacked_2 = rhs.decode();
+        posit_unpacked unpacked_1 = decode();
+        posit_unpacked unpacked_2 = rhs.decode();
 
         if (unpacked_1.sign == unpacked_2.sign)
         {
@@ -454,15 +639,15 @@ public:
 
     Posit operator+(const Posit &rhs) const
     {
-        unpacked_t in1 = decode();
-        unpacked_t in2 = rhs.decode();
+        posit_unpacked in1 = decode();
+        posit_unpacked in2 = rhs.decode();
 
         // set biggest posit to be in1
-        ap_int<max_k_size + es> diff_texp = (in1.k - in2.k) * hls::pow(2, es) + in1.exp - in2.exp;
+        ap_int<max_k_size + es> diff_texp = (in1.k - in2.k) * (2 << es) /*hls::pow(2, es)*/ + in1.exp - in2.exp;
 
         if (diff_texp < 0)
         {
-            unpacked_t paux = in1;
+            posit_unpacked paux = in1;
             in1 = in2;
             in2 = paux;
 
@@ -516,27 +701,31 @@ public:
         }
         else
         {
+        Posit_add_while_1:
             while (frac >= 2)
             {
                 frac = frac >> 1;
                 exp++;
             }
 
+        Posit_add_while_2:
             while (frac < 1)
             {
                 frac = frac << 1;
                 exp--;
             }
 
-            while (exp >= hls::pow(2, es))
+        Posit_add_while_3:
+            while (exp >= (2 << es) /*hls::pow(2, es)*/)
             {
-                exp -= hls::pow(2, es);
+                exp -= (2 << es) /*hls::pow(2, es)*/;
                 k++;
             }
 
+        Posit_add_while_4:
             while (exp < 0)
             {
-                exp += hls::pow(2, es);
+                exp += (2 << es) /*hls::pow(2, es)*/;
                 k--;
             }
         }
@@ -560,13 +749,13 @@ public:
         }
 
         // normalize exponent (again)
-        if (exp >= hls::pow(2, es))
+        if (exp >= (2 << es) /*hls::pow(2, es)*/)
         {
-            exp -= hls::pow(2, es);
+            exp -= (2 << es) /*hls::pow(2, es)*/;
             k++;
         }
 
-        unpacked_t out;
+        posit_unpacked out;
         out.sign = sign;
         out.k = k;
         out.exp = exp;
@@ -588,8 +777,8 @@ public:
 
     Posit operator*(const Posit &rhs) const
     {
-        unpacked_t in1 = decode();
-        unpacked_t in2 = rhs.decode();
+        posit_unpacked in1 = decode();
+        posit_unpacked in2 = rhs.decode();
 
         bool sign = in1.sign ^ in2.sign;
         ap_int<max_k_size + 1> k = in1.k + in2.k;
@@ -604,9 +793,9 @@ public:
         }
 
         // normalize exponent
-        if (exp >= hls::pow(2, es))
+        if (exp >= (2 << es) /*hls::pow(2, es)*/)
         {
-            exp -= hls::pow(2, es);
+            exp -= (2 << es) /*hls::pow(2, es)*/;
             k++;
         }
 
@@ -646,13 +835,13 @@ public:
         }
 
         // normalize exponent (again)
-        if (exp >= hls::pow(2, es))
+        if (exp >= (2 << es) /*hls::pow(2, es)*/)
         {
-            exp -= hls::pow(2, es);
+            exp -= (2 << es) /*hls::pow(2, es)*/;
             k++;
         }
 
-        unpacked_t out;
+        posit_unpacked out;
         out.sign = sign;
         out.k = k;
         out.exp = exp;
@@ -666,15 +855,15 @@ public:
 
     Posit operator/(const Posit &rhs) const
     {
-        unpacked_t in = rhs.decode();
-        unpacked_t out;
+        posit_unpacked in = rhs.decode();
+        posit_unpacked out;
         out.sign = in.sign;
         ap_int<max_k_size> k = -in.k;
         ap_int<es + 1> exp = -in.exp;
 
         if (exp < 0)
         {
-            exp += hls::pow(2, es);
+            exp += (2 << es) /*hls::pow(2, es)*/;
             k -= 1;
         }
 
@@ -702,14 +891,14 @@ public:
     }
 
 private:
-    unpacked_t decode() const
+    posit_unpacked decode() const
     {
         // Posit sign (1 bit), r (variable bits), e (es bits), frac (variable bits)
         // to go from a Posit into a real number
         // x = -(1 - sign) * (u**k) * (2**e) * (1, frac)
         // with u = 2**(2**es)
 
-        unpacked_t unpacked;
+        posit_unpacked unpacked;
 
         // sign bit
         unpacked.sign = bits_[nbits - 1];
@@ -717,6 +906,7 @@ private:
         // count identical bits
         int reg_len = 1;
         bool reg_bit = bits_[nbits - 2];
+    Posit_decode_while:
         while (reg_len < nbits - 1 && bits_[nbits - 2 - reg_len] == reg_bit)
         {
             reg_len++;
@@ -762,7 +952,7 @@ private:
         return unpacked;
     }
 
-    void encode(const unpacked_t &unpacked)
+    void encode(const posit_unpacked unpacked)
     {
         // k bits
         bool reg_bit;
@@ -785,6 +975,7 @@ private:
 
         int reg_start = nbits - 2;
 
+    Posit_encode_for:
         for (int i = 0; i < reg_len; i++)
         {
             bits_[reg_start - i] = reg_bit;
@@ -816,3 +1007,27 @@ private:
 
     ap_uint<nbits> bits_;
 };
+
+template <int nbits, int es>
+Posit<nbits, es> fabs(const Posit<nbits, es> &p)
+{
+    return p.fabs();
+}
+
+template <int nbits, int es>
+Posit<nbits, es> floor(const Posit<nbits, es> &p)
+{
+    return p.floor();
+}
+
+template <int nbits, int es>
+Posit<nbits, es> round(const Posit<nbits, es> &p)
+{
+    return p.round();
+}
+
+template <int nbits, int es>
+Posit<nbits, es> ceil(const Posit<nbits, es> &p)
+{
+    return p.ceil();
+}

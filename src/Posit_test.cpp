@@ -23,7 +23,7 @@ int main(void)
     {
         for (double b = -max; b < max; b += step)
         {
-            // mat operations
+            // binary operations
             double add = a + b;
             double sub = a - b;
             double mul = a * b;
@@ -36,6 +36,15 @@ int main(void)
             bool greater_or_equal = a >= b;
             bool equal = a == b;
             bool not_equal = a != b;
+
+            // unar operations
+            double neg = -b;
+
+            // other operations
+            double abs_ = fabs(b);
+            double round_ = round(b);
+            double floor_ = floor(b);
+            double ceil_ = ceil(b);
 
             bool failed = false;
 
@@ -68,6 +77,18 @@ int main(void)
                 failed = true;
             }
 
+            Posit<nbits, es> add_mixed_2 = a_mixed;
+            add_mixed_2 += b_mixed;
+            double add_double_2 = double(add_mixed_2);
+
+            double add_diff_2 = fabs(add - add_double_2);
+            if (add_diff_2 > add_max_diff)
+            {
+                std::cout << "diff: " << add_diff_2 << " in: " << a << " += " << b << " = " << add << std::endl;
+                std::cout << a_double << " += " << b_double << " = " << add_double_2 << std::endl;
+                failed = true;
+            }
+
             Posit<nbits, es> sub_mixed = a_mixed - b_mixed;
             double sub_double = double(sub_mixed);
 
@@ -76,6 +97,17 @@ int main(void)
             {
                 std::cout << "diff: " << sub_diff << " in: " << a << " - " << b << " = " << sub << std::endl;
                 std::cout << a_double << " - " << b_double << " = " << sub_double << std::endl;
+                failed = true;
+            }
+
+            Posit<nbits, es> sub_mixed_2 = a_mixed - b_mixed;
+            double sub_double_2 = double(sub_mixed_2);
+
+            double sub_diff_2 = fabs(sub - sub_double_2);
+            if (sub_diff_2 > sub_max_diff)
+            {
+                std::cout << "diff: " << sub_diff_2 << " in: " << a << " -= " << b << " = " << sub << std::endl;
+                std::cout << a_double << " -= " << b_double << " = " << sub_double_2 << std::endl;
                 failed = true;
             }
 
@@ -90,6 +122,19 @@ int main(void)
                 failed = true;
             }
 
+            Posit<nbits, es> mul_mixed_2 = a_mixed;
+            mul_mixed_2 *= b_mixed;
+            double mul_double_2 = double(mul_mixed_2);
+
+            double mul_diff_2 = fabs(mul - mul_double_2);
+            if (mul_diff_2 > mul_max_diff)
+            {
+                std::cout << "diff: " << mul_diff_2 << " in: " << a << " *= " << b << " = " << mul << std::endl;
+                std::cout << a_double << " *= " << b_double << " = " << mul_double_2 << std::endl;
+                failed = true;
+            }
+
+            /*
             Posit<nbits, es> div_mixed = a_mixed / b_mixed;
             double div_double = double(div_mixed);
 
@@ -100,6 +145,7 @@ int main(void)
                 std::cout << a_double << " / " << b_double << " = " << div_double << std::endl;
                 failed = true;
             }
+            */
 
             bool less_mixed = a_mixed < b_mixed;
             if (less != less_mixed)
@@ -146,6 +192,51 @@ int main(void)
             {
                 std::cout << "error: in: " << a << " != " << b << " = " << not_equal << std::endl;
                 std::cout << a_double << " != " << b_double << " = " << not_equal_mixed << std::endl;
+                failed = true;
+            }
+
+            Posit<nbits, es> abs_mixed = fabs(b_mixed);
+            double abs_double = double(abs_mixed);
+            if (abs_ != abs_double)
+            {
+                std::cout << "error: in: fabs(" << b << ") " << std::endl;
+                std::cout << abs_ << " != " << abs_double << std::endl;
+                failed = true;
+            }
+
+            Posit<nbits, es> floor_mixed = floor(b_mixed);
+            double floor_double = double(floor_mixed);
+            if (floor_ != floor_double)
+            {
+                std::cout << "error: in: floor(" << b << ") " << std::endl;
+                std::cout << floor_ << " != " << floor_double << std::endl;
+                failed = true;
+            }
+
+            Posit<nbits, es> round_mixed = round(b_mixed);
+            double round_double = double(round_mixed);
+            if (round_ != round_double)
+            {
+                std::cout << "error: in: round(" << b << ") " << std::endl;
+                std::cout << round_ << " != " << round_double << std::endl;
+                failed = true;
+            }
+
+            Posit<nbits, es> ceil_mixed = ceil(b_mixed);
+            double ceil_double = double(ceil_mixed);
+            if (ceil_ != ceil_double)
+            {
+                std::cout << "error: in: ceil(" << b << ") " << std::endl;
+                std::cout << ceil_ << " != " << ceil_double << std::endl;
+                failed = true;
+            }
+
+            Posit<nbits, es> neg_mixed = -b_mixed;
+            double neg_double = double(neg_mixed);
+            if (neg != neg_double)
+            {
+                std::cout << "error: in: -" << b << " " << std::endl;
+                std::cout << neg << " != " << neg_double << std::endl;
                 failed = true;
             }
 

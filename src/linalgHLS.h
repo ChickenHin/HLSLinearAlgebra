@@ -126,7 +126,7 @@ namespace linalgHLS
             for (int r = 0; r < _rows; r++)
             mat_fmult_loop_c:
                 for (int c = 0; c < _cols; c++)
-                    result.data[r][c] = Type(data[r][c] * scalar);
+                    result.data[r][c] = data[r][c] * Type(scalar);
             return result;
         }
 
@@ -139,7 +139,7 @@ namespace linalgHLS
             for (int r = 0; r < _rows; r++)
             mat_fdev_loop_c:
                 for (int c = 0; c < _cols; c++)
-                    result.data[r][c] = Type(data[r][c] / scalar);
+                    result.data[r][c] = data[r][c] / Type(scalar);
             return result;
         }
 
