@@ -713,8 +713,8 @@ public:
         posit_unpacked in2 = rhs.decode(rhs.bits_);
 
         bool sign = in1.sign ^ in2.sign;
-        int k = in1.k + in2.k;
-        int exp = in1.exp + in2.exp;
+        ap_int<counter_bit_size + 2> k = in1.k + in2.k;
+        ap_uint<es + 2> exp = in1.exp + in2.exp;
         ap_ufixed<frac_bit_size * 2, 2> frac = in1.frac * in2.frac;
 
         // normalize fraction
@@ -847,14 +847,79 @@ private:
 
     posit_unpacked decode(const ap_uint<nbits> &bits) const
     {
+        posit_unpacked unpacked;
+
+        bool simbol = bits[nbits - 2];
+        ap_uint<counter_bit_size> k;
+
+        ap_uint<counter_bit_size> counter = 0;
+
+        unpacked.sign = bits[nbits - 1];
+        unpacked.k = 0;
+        unpacked.exp = 0;
+        unpacked.frac = 0.0;
+
+        enum states
+        {
+            K,
+            E,
+            F
+        } state = K;
+
+    Posit_decode_for:
+        for (int bit = nbits - 3; bit >= 0; bit--)
+        {
+            if (state == K)
+            {
+                if (bits[bit] != simbol)
+                {
+                    k = nbits - 2 - bit;
+                    // counter = nbits - 3 - bit;
+
+                    if (simbol == 0)
+                        unpacked.k = k - 1;
+                    else
+                        unpacked.k = -k;
+                    counter = 0;
+                    unpacked.frac[frac_bit_size - 1] = 1;
+                    state = E;
+                }
+                continue;
+            }
+
+            if (state == E)
+            {
+                //unpacked.exp[es - 1 - counter] = bits[bit];
+                unpacked.exp[bit - (nbits - 2 - k - es)] = bits[bit];
+
+                counter++;
+                if (counter >= es)
+                {
+                    state = F;
+                    counter = 0;
+                }
+                continue;
+            }
+
+            if (state == F)
+            {
+                unpacked.frac[frac_bit_size - 2 - counter] = bits[bit];
+                counter++;
+                continue;
+            }
+        }
+
+        return unpacked;
+
         /*
+        posit_unpacked unpacked;
+
         bool simbol = 0;
         ap_uint<counter_bit_size> counter = 0;
 
-        bool s = 0;
-        ap_int<counter_bit_size+1> k = 0;
-        ap_uint<es> e = 0;
-        ap_ufixed<frac_bit_size, 1> f = 1.0;
+        unpacked.k = 0;
+        unpacked.exp = 0;
+        unpacked.frac = 0.0;
 
         enum states
         {
@@ -870,43 +935,37 @@ private:
             switch (state)
             {
             case S:
-                if (bits[bit] == 0)
-                    s = 0;
-                else
-                    s = 1;
+                unpacked.sign = bits[bit];
                 state = K;
                 break;
+
             case K:
                 if (bit == nbits - 2)
                 {
                     simbol = bits[bit];
-                    if (simbol == 1)
-                        k = -1;
+                    counter = 1;
                 }
                 else
                 {
                     if (bits[bit] == simbol)
                     {
-                        if (simbol == 0)
-                            k++;
-                        else
-                            k--;
-
-                        if (s == 0 && simbol == 0 && bit == 0)
-                        {
-                            k = 0;
-                            f[frac_bit_size-1] = 0;
-                        }
+                        counter++;
                     }
                     else
                     {
-                        state = E;
+                        if (simbol == 0)
+                            unpacked.k = counter - 1;
+                        else
+                            unpacked.k = -counter;
                         counter = 0;
+                        unpacked.frac[frac_bit_size - 1] = 1;
+                        state = E;
                     }
                 }
                 break;
+
             case E:
-                e[es - 1 - counter] = bits[bit];
+                unpacked.exp[es - 1 - counter] = bits[bit];
                 counter++;
                 if (counter >= es)
                 {
@@ -914,85 +973,81 @@ private:
                     counter = 0;
                 }
                 break;
+
             case F:
-                f[frac_bit_size - 2 - counter] = bits[bit];
+                unpacked.frac[frac_bit_size - 2 - counter] = bits[bit];
                 counter++;
+                break;
+
+            default:
                 break;
             }
         }
 
-        posit_unpacked unpacked;
-        unpacked.sign = s;
-        unpacked.k = k;
-        unpacked.exp = e;
-        unpacked.frac = f;
-
         return unpacked;
         */
+        /*
+        bool simbol = bits[nbits - 2];
+        ap_uint<counter_bit_size> k = 1;
 
-        // Posit sign (1 bit), r (variable bits), e (es bits), frac (variable bits)
-        // to go from a Posit into a real number
-        // x = -(1 - sign) * (u**k) * (2**e) * (1, frac)
-        // with u = 2**(2**es)
+        // bool s = bits[nbits - 1];
+        // ap_uint<es> e = 0;
+        // ap_fixed<frac_bit_size, 1> f = 1.0;
 
         posit_unpacked unpacked;
 
-        // sign bit
         unpacked.sign = bits[nbits - 1];
-
-        // count identical bits
-        ap_uint<counter_bit_size> reg_len = 1;
-        bool reg_bit = bits[nbits - 2];
-
-        // Posit_decode_while:
-        // while (reg_len < nbits - 1 && bits_[nbits - 2 - reg_len] == reg_bit)
-        //{
-        //     reg_len++;
-        // }
+        unpacked.k = 1;
+        unpacked.exp = 0;
+        unpacked.frac = 1.0;
 
     Posit_decode_for:
-        for (int i = 2; i < nbits; i++)
+        for (int i = 0; i < nbits - 2; i++)
         {
-            if (bits[nbits - 1 - i] == reg_bit)
-                reg_len++;
+            if (bits[nbits - 3 - i] == simbol)
+            {
+                k++;
+            }
             else
+            {
                 break;
+            }
+
+            //if (bits[nbits - 3 - i] != simbol)
+            //{
+            //    k = i + 1;
+            //    break;
+            //}
         }
 
-        // k is just reg_len (or -reg_len if leading bit is 1)
-        if (reg_len == nbits - 1)
+        if (k == nbits - 1)
             unpacked.k = 0;
         else
         {
-            if (reg_bit == 0)
-                unpacked.k = reg_len - 1;
+            if (simbol == 0)
+                unpacked.k = k - 1;
             else
-                unpacked.k = -reg_len;
+                unpacked.k = -k;
         }
 
         // exponent bits
-        ap_uint<counter_bit_size> exp_start = nbits - 3 - reg_len;
+        ap_int<counter_bit_size + 1> exp_start = nbits - 3 - k;
         ap_int<counter_bit_size + 1> exp_end = exp_start - es + 1;
         if (exp_end < 0)
             exp_end = 0;
-        ap_uint<counter_bit_size> exp_len = exp_start - exp_end + 1;
-
-        unpacked.exp = 0;
+        ap_int<counter_bit_size> exp_len = exp_start - exp_end + 1;
 
         if (exp_len > 0)
-            // unpacked.exp(exp_len - 1, 0) = bits_(exp_start, exp_end);
-            unpacked.exp = bits_(exp_start, exp_end);
+            unpacked.exp(exp_len - 1, 0) = bits_(exp_start, exp_end);
         // else
         //     unpacked.exp = 0;
 
         // fraction bits
-        ap_uint<counter_bit_size> frac_start = exp_end - 1;
-        ap_uint<counter_bit_size> frac_len = frac_start + 1;
-
-        unpacked.frac = 0;
+        ap_int<counter_bit_size + 1> frac_start = exp_end - 1;
+        ap_int<counter_bit_size + 1> frac_len = frac_start + 1;
 
         // add leading 1
-        if (reg_len == nbits - 1)
+        if (k == nbits - 1)
             unpacked.frac[frac_bit_size - 1] = 0;
         else
             unpacked.frac[frac_bit_size - 1] = 1;
@@ -1004,6 +1059,7 @@ private:
             unpacked.frac(frac_bit_size - 2, 0) = 0;
 
         return unpacked;
+        */
     }
 
     ap_uint<nbits> encode(const posit_unpacked &unpacked) const
