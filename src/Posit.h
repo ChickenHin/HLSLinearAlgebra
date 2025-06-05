@@ -39,9 +39,11 @@ template <int nbits, int es>
 class Posit
 {
 public:
-    static constexpr int max_k_size = nbits - 1;
-    // static constexpr int max_k_size = detail::clog2<nbits - 1>::value;
+    static constexpr int max_k_size = nbits / 2;
+    //static constexpr int max_k_size = detail::clog2<nbits - 1>::value;
     static constexpr int max_frac_size = nbits - 3 - es + 1;
+    //static constexpr int max_count_size = detail::clog2<nbits>::value;
+    static constexpr int max_count_size = nbits / 2;
     static constexpr int max_exp_val = 2 << (es - 1); // pow(2, es),  max value for exponent
     static constexpr int float_exp_bias = 127;        // pow(2, 7) - 1;
     static constexpr int double_exp_bias = 1023;      // pow(2, 10) -1;
@@ -89,8 +91,8 @@ public:
 
         // mantissa is just zeros
         ap_ufixed<2, 1> pmantissa;
-        
-        if(c == 0)
+
+        if (c == 0)
             pmantissa[1] = 0.0;
         else
             pmantissa[1] = 1.0;
@@ -137,12 +139,12 @@ public:
         ap_int<9> fexponent = bits(30, 23) - float_exp_bias;
         // get mantisa from floating point
         ap_ufixed<24, 1> fmantissa;
-        
-        if(c == 0.0f)
+
+        if (c == 0.0f)
             fmantissa[23] = 0;
         else
             fmantissa[23] = 1;
-        
+
         fmantissa(22, 0) = bits(22, 0);
 
         // get sign from float sign
@@ -201,8 +203,8 @@ public:
         ap_int<12> fexponent = bits(62, 52) - double_exp_bias;
         // get mantisa from floating point
         ap_ufixed<53, 1> fmantissa;
-        
-        if(c == 0.0)
+
+        if (c == 0.0)
             fmantissa[52] = 0;
         else
             fmantissa[52] = 1;
@@ -630,7 +632,7 @@ public:
             frac2 = frac2;
 
         // shift left in2, so that both have the same exponent
-        //for (int i = 0; i < diff_texp; i++)
+        // for (int i = 0; i < diff_texp; i++)
         //    frac2 = frac2 >> 1;
         frac2 = frac2 >> diff_texp;
 
@@ -862,12 +864,20 @@ private:
         unpacked.sign = bits_[nbits - 1];
 
         // count identical bits
-        int reg_len = 1;
+        ap_int<max_count_size> reg_len = 1;
         bool reg_bit = bits_[nbits - 2];
+    /*
     Posit_decode_while:
-        while (reg_len < nbits - 1 && bits_[nbits - 2 - reg_len] == reg_bit)
+    while (reg_len < nbits - 1 && bits_[nbits - 2 - reg_len] == reg_bit)
+    {
+        reg_len++;
+    }
+    */
+    Posit_decode_for:
+        for (int i = 2; i < nbits; i++)
         {
-            reg_len++;
+            if (bits_[nbits - 2 - i] == reg_bit)
+                reg_len++;
         }
 
         // k is just reg_len (or -reg_len if leading bit is 1)
@@ -877,9 +887,9 @@ private:
             unpacked.k = reg_bit == 0 ? (reg_len - 1) : (-reg_len);
 
         // exponent bits
-        int exp_start = nbits - 3 - reg_len;
-        int exp_end = hls::max(exp_start - es + 1, 0);
-        int exp_len = exp_start - exp_end + 1;
+        ap_int<max_count_size> exp_start = nbits - 3 - reg_len;
+        ap_int<max_count_size> exp_end = hls::max(exp_start - es + 1, 0);
+        ap_int<max_count_size> exp_len = exp_start - exp_end + 1;
 
         unpacked.exp = 0;
 
@@ -889,9 +899,9 @@ private:
         //     unpacked.exp = 0;
 
         // fraction bits
-        int frac_start = exp_end - 1;
-        int frac_end = 0;
-        int frac_len = frac_start - frac_end + 1;
+        ap_int<max_count_size> frac_start = exp_end - 1;
+        ap_int<max_count_size> frac_end = 0;
+        ap_int<max_count_size> frac_len = frac_start - frac_end + 1;
 
         unpacked.frac = 0;
 
