@@ -134,7 +134,6 @@ int main(void)
                 failed = true;
             }
 
-            /*
             Posit<nbits, es> div_mixed = a_mixed / b_mixed;
             double div_double = double(div_mixed);
 
@@ -145,7 +144,7 @@ int main(void)
                 std::cout << a_double << " / " << b_double << " = " << div_double << std::endl;
                 failed = true;
             }
-            */
+
             /*
             bool less_mixed = a_mixed < b_mixed;
             if (less != less_mixed)
