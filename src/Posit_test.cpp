@@ -29,6 +29,16 @@ int main(void)
             double mul = a * b;
             double div = a / b;
 
+            // remove -inf, it is not supported by Posit
+            if (add == -std::numeric_limits<double>::infinity())
+                add = std::numeric_limits<double>::infinity();
+            if (sub == -std::numeric_limits<double>::infinity())
+                sub = std::numeric_limits<double>::infinity();
+            if (mul == -std::numeric_limits<double>::infinity())
+                mul = std::numeric_limits<double>::infinity();
+            if (div == -std::numeric_limits<double>::infinity())
+                div = std::numeric_limits<double>::infinity();
+
             // relational operations
             bool less = a < b;
             bool greater = a > b;
@@ -202,7 +212,7 @@ int main(void)
                 std::cout << abs_ << " != " << abs_double << std::endl;
                 failed = true;
             }
-            
+
             Posit<nbits, es> floor_mixed = floor(b_mixed);
             double floor_double = double(floor_mixed);
             if (floor_ != floor_double)

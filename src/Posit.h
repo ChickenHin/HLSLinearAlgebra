@@ -35,1018 +35,100 @@ namespace detail
 
 } // namespace detail
 
-template <int nbits, int es>
-class Posit
+template <int kbits, int ebits, int fbits>
+struct posit_unpacked
 {
-public:
-    // static constexpr int max_k_size = nbits / 2;
-    // static constexpr int k_bit_size = detail::clog2<nbits - 1>::value;
-    static constexpr int frac_bit_size = nbits - 3 - es + 1;
-    static constexpr int counter_bit_size = detail::clog2<nbits>::value + 1;
-    // static constexpr int max_count_size = nbits / 2;
-    static constexpr int max_exp_val = 1 << es; // pow(2, es),  max value for exponent
+    bool is_zero;
+    bool is_inf;
+    bool sign;
+    // the max amount of bits for r is nbits-1 bits, nbits-2 bits beeing 0 (or 1), and the last beeing 1 (or 0)
+    // k is the amount of counted bits
+    // which can be stored in log2(nbits - 2) bits
+    ap_int<kbits> k;
+    ap_uint<ebits> exp;
+    // the max amount of bits for frac is nbits - 1 (sign) - 2 (min bits for k) - es;
+    ap_ufixed<fbits, 1> frac;
 
-    struct posit_unpacked
+    template <int nbits, int es>
+    ap_uint<nbits> encode() const
     {
-        bool sign;
-        // the max amount of bits for r is nbits-1 bits, nbits-2 bits beeing 0 (or 1), and the last beeing 1 (or 0)
-        // k is the amount of counted bits
-        // which can be stored in log2(nbits - 2) bits
-        ap_int<counter_bit_size> k;
-        ap_uint<es> exp;
-        // the max amount of bits for frac is nbits - 1 (sign) - 2 (min bits for k) - es;
-        ap_ufixed<frac_bit_size, 1> frac;
-        bool is_zero;
-        bool is_inf;
-    };
+        ap_uint<nbits> bits;
 
-    Posit()
-    {
-    }
+        // k bits
+        bool reg_bit;
+        int reg_len;
 
-    Posit(const Posit &other)
-    {
-        bits_ = other.bits_;
-    }
-
-    Posit &operator=(const Posit &other)
-    {
-        bits_ = other.bits_;
-        /*
-        if (this != &other)
+        // if the integer bit in the fraction is 0, then the whole number is zero
+        if (is_zero == 1)
         {
-            bits_ = other.bits_;
+            bits[nbits - 1] = 0;
+            reg_bit = 0;
+            reg_len = nbits - 1;
         }
-        */
-        return *this;
-    }
-
-    Posit(int c)
-    {
-        // #pragma HLS INLINE
-
-        bool psign = c >= 0 ? 0 : 1;
-
-        // mantissa is just zeros
-        ap_ufixed<2, 1> pmantissa;
-
-        if (c == 0)
-            pmantissa[1] = 0.0;
-        else
-            pmantissa[1] = 1.0;
-
-        int fexponent = hls::log2(c);
-
-        int pk, pexp;
-        getKEFromExp(fexponent, pk, pexp);
-
-        posit_unpacked unpacked;
-        unpacked.sign = psign;
-        unpacked.frac = pmantissa;
-        unpacked.exp = pexp;
-        unpacked.k = pk;
-
-        bits_ = encode(unpacked);
-    }
-
-    Posit(unsigned int c)
-    {
-        // #pragma HLS INLINE
-        bool psign = 0;
-
-        // mantissa is just zeros
-        ap_ufixed<2, 1> pmantissa;
-
-        if (c == 0)
-            pmantissa[1] = 0.0;
-        else
-            pmantissa[1] = 1.0;
-
-        int fexponent = hls::log2(c);
-
-        int pk, pexp;
-        getKEFromExp(fexponent, pk, pexp);
-
-        posit_unpacked unpacked;
-        unpacked.sign = psign;
-        unpacked.frac = pmantissa;
-        unpacked.exp = pexp;
-        unpacked.k = pk;
-
-        bits_ = encode(unpacked);
-    }
-
-    Posit(float c)
-    {
-        // #pragma HLS INLINE
-
-        ap_uint<32> bits = *reinterpret_cast<ap_uint<32> *>(&c);
-        // unsigned int* bitsPtr = (unsigned int*)&c;
-        // unsigned int bits = *bitsPtr; // Dereference to get the raw bits
-
-        bool fsign = bits[31];
-        // remove bias from floating point exponent
-        // ap_int<9> fexponent = bits(30, 23) - 127;
-        int fexponent = bits(30, 23) - 127;
-        // get mantisa from floating point
-        ap_ufixed<24, 1> fmantissa;
-
-        if (c == 0.0f)
-            fmantissa[23] = 0;
-        else
-            fmantissa[23] = 1;
-
-        fmantissa(22, 0) = bits(22, 0);
-
-        // get sign from float sign
-        bool psign = fsign;
-
-        ap_ufixed<frac_bit_size + 1, 2> pmantissa = fmantissa;
-
-        // round to nearest
-        if (fmantissa[22 - (frac_bit_size - 1)] == 1)
+        else if (is_inf == 1)
         {
-            ap_ufixed<frac_bit_size, 1> one = 0;
-            one[0] = 1;
-            // if(pmantissa[0] == 0)
-            pmantissa += one;
-            // pmantissa[0] = 1;
-        }
-
-        // normalize (necesary because of the rounding)
-        if (pmantissa >= 2.0)
-        {
-            pmantissa = pmantissa >> 1;
-            fexponent++;
-        }
-
-        int pk, pexp;
-        getKEFromExp(fexponent, pk, pexp);
-
-        posit_unpacked unpacked;
-        unpacked.sign = psign;
-        unpacked.frac = pmantissa;
-        unpacked.exp = pexp;
-        unpacked.k = pk;
-
-        bits_ = encode(unpacked);
-    }
-
-    Posit(double c)
-    {
-        // #pragma HLS INLINE
-
-        ap_uint<64> bits = *reinterpret_cast<ap_uint<64> *>(&c);
-        // unsigned int* bitsPtr = (unsigned int*)&c;
-        // unsigned int bits = *bitsPtr; // Dereference to get the raw bits
-
-        bool is_zero;
-        bool is_inf;
-
-        bool fsign;
-        // ap_int<12> fexponent;
-        int fexponent;
-        // get mantisa from floating point
-        ap_ufixed<53, 1> fmantissa;
-
-        if (c == 0.0)
-        {
-            is_zero = 1;
-            is_inf = 0;
-            fsign = 0;
-            fexponent = 0;
-            fmantissa = 0;
-        }
-        else if (c == std::numeric_limits<double>::infinity() || c == -std::numeric_limits<double>::infinity())
-        {
-            is_zero = 0;
-            is_inf = 1;
-            fsign = 0;
-            fexponent = 0;
-            fmantissa = 0;
+            bits[nbits - 1] = 1;
+            reg_bit = 0;
+            reg_len = nbits - 1;
         }
         else
         {
-            is_zero = 0;
-            is_inf = 0;
-            fsign = bits[63];
-            fexponent = bits(62, 52) - 1023; // remove bias from floating point exponent
-            fmantissa[52] = 1;
-            fmantissa(51, 0) = bits(51, 0);
+            bits[nbits - 1] = sign;
+            reg_bit = k >= 0 ? 0 : 1;
+            reg_len = k >= 0 ? int(k + 1) : int(-k);
+            reg_len = hls::min(nbits - 1, reg_len);
         }
 
-        // get sign from double sign
-        bool psign = fsign;
+        int reg_start = nbits - 2;
 
-        // get mantissa from double mantissa
-        ap_ufixed<frac_bit_size + 1, 2> pmantissa = fmantissa;
-
-        // round to nearest
-        if (fmantissa[51 - (frac_bit_size - 1)] == 1)
+    Posit_encode_for:
+        for (int i = 0; i < reg_len; i++)
         {
-            ap_ufixed<frac_bit_size, 1> one = 0;
-            one[0] = 1;
-            // if(pmantissa[0] == 0)
-            pmantissa += one;
-            // pmantissa[0] = 1;
+            bits[reg_start - i] = reg_bit;
         }
 
-        // normalize (necesary because of the rounding)
-        if (pmantissa >= 2.0)
+        int reg_end = reg_start - reg_len;
+
+        if (reg_end >= 0)
         {
-            pmantissa = pmantissa >> 1;
-            fexponent++;
+            bits[reg_end] = !reg_bit;
         }
 
-        int pk, pexp;
-        getKEFromExp(fexponent, pk, pexp);
+        // exponent bits
+        int exp_start = nbits - 3 - reg_len;
+        int exp_end = hls::max(exp_start - es + 1, 0);
+        int exp_len = exp_start - exp_end + 1;
 
-        posit_unpacked unpacked;
+        if (exp_len > 0)
+            bits(exp_start, exp_end) = exp; // unpacked.exp(exp_len - 1, 0);
 
-        unpacked.sign = psign;
-        unpacked.frac = pmantissa;
-        unpacked.exp = pexp;
-        unpacked.k = pk;
-        unpacked.is_zero = is_zero;
-        unpacked.is_inf = is_inf;
+        // fraction bits
+        int frac_start = exp_end - 1;
+        int frac_end = 0;
+        int frac_len = frac_start - frac_end + 1;
 
-        bits_ = encode(unpacked);
+        if (frac_len > 0)
+            bits(frac_start, frac_end) = frac(fbits - 2, fbits - 1 - frac_len);
+
+        return bits;
     }
 
-    template <int fnbits, int fibits>
-    Posit(ap_fixed<fnbits, fibits> c)
+    template <int nbits, int es>
+    void decode(const ap_uint<nbits> &bits)
     {
-        // #pragma HLS INLINE
-
-        bool fsign = c >= 0 ? 0 : 1;
-        int fexponent = hls::log2(c(fnbits - 1, fnbits - fibits));
-
-        ap_ufixed<fnbits - fibits + 1, 1> fmantissa;
-
-        if (c == 0.0f)
-            fmantissa[fnbits - fibits] = 0;
-        else
-            fmantissa[fnbits - fibits] = 1;
-
-        fmantissa(fnbits - fibits - 1, 0) = c(fnbits - fibits - 1, 0);
-
-        // get sign from float sign
-        bool psign = fsign;
-
-        ap_ufixed<frac_bit_size + 1, 2> pmantissa = fmantissa;
-
-        int pk, pexp;
-        getKEFromExp(fexponent, pk, pexp);
-
-        posit_unpacked unpacked;
-        unpacked.sign = psign;
-        unpacked.frac = pmantissa;
-        unpacked.exp = pexp;
-        unpacked.k = pk;
-
-        bits_ = encode(unpacked);
-    }
-
-    operator int() const
-    {
-        // #pragma HLS INLINE
-
-        posit_unpacked unpacked = decode(bits_);
-
-        if (unpacked.frac == 0.0)
-        {
-            return 0;
-        }
-        else
-        {
-            int exp = getExpFromKE(unpacked.k, unpacked.exp);
-            int res = (1 << exp);
-            if (unpacked.sign)
-            {
-                res = -res;
-            }
-            return res;
-        }
-    }
-
-    operator float() const
-    {
-        // #pragma HLS INLINE
-
-        posit_unpacked unpacked = decode(bits_);
-
-        ap_uint<32> bits = 0;
-
-        bits(31, 31) = unpacked.sign;
-
-        ap_uint<8> exponent;
-
-        if (unpacked.frac[frac_bit_size - 1] == 0)
-            exponent = 0;
-        else
-            exponent = getExpFromKE(unpacked.k, unpacked.exp) + 127;
-
-        bits(30, 23) = exponent;
-
-        if (23 >= frac_bit_size - 1)
-            bits(22, 22 - frac_bit_size + 2) = unpacked.frac(frac_bit_size - 2, 0);
-        else
-            bits(22, 0) = unpacked.frac(frac_bit_size - 2, frac_bit_size - 2 - 22);
-
-        float fresult = *reinterpret_cast<float *>(&bits);
-        return fresult;
-    }
-
-    operator double() const
-    {
-        // #pragma HLS INLINE
-
-        posit_unpacked unpacked = decode(bits_);
-
-        ap_uint<64> bits;
-
-        if (unpacked.is_zero)
-        {
-            return double(0.0);
-        }
-
-        if (unpacked.is_inf)
-        {
-            return std::numeric_limits<double>::infinity();
-        }
-
-        bits[63] = unpacked.sign;
-
-        ap_uint<11> exponent;
-
-        if (unpacked.frac[frac_bit_size - 1] == 0)
-            exponent = 0;
-        else
-            exponent = getExpFromKE(unpacked.k, unpacked.exp) + 1023;
-
-        bits(62, 52) = exponent;
-
-        if (52 >= frac_bit_size - 1)
-        {
-            bits(51, 51 - frac_bit_size + 2) = unpacked.frac(frac_bit_size - 2, 0);
-            bits(51 - frac_bit_size + 1, 0) = 0; // fill the rest with zeros
-        }
-        else
-        {
-            bits(51, 0) = unpacked.frac(frac_bit_size - 2, frac_bit_size - 2 - 51);
-        }
-
-        double fresult = *reinterpret_cast<double *>(&bits);
-        return fresult;
-    }
-
-    template <int fnbits, int fibits>
-    operator ap_fixed<fnbits, fibits>() const
-    {
-        // #pragma HLS INLINE
-
-        posit_unpacked unpacked = decode(bits_);
-
-        if (unpacked.frac == 0.0)
-        {
-            return 0;
-        }
-        else
-        {
-            int exp = getExpFromKE(unpacked.k, unpacked.exp);
-            int res = (unpacked.frac << exp);
-            if (unpacked.sign)
-            {
-                res = -res;
-            }
-            return res;
-        }
-    }
-
-    Posit fabs() const
-    {
-        Posit result = *this;
-        if (result.bits_[nbits - 1] == 1)
-        {
-            result.bits_[nbits - 1] = 0; // set sign bit to 0
-        }
-
-        return result;
-    }
-
-    Posit floor() const
-    {
-        // floor to nearest
-        posit_unpacked unpacked = decode();
-        int exp = getExpFromKE(unpacked.k, unpacked.exp);
-
-        ap_fixed<frac_bit_size * 2, frac_bit_size> frac = unpacked.frac;
-        frac = frac << exp;
-        frac = hls::floor(frac);
-        frac = frac >> exp;
-
-        unpacked.frac = frac;
-
-        Posit result;
-        result.bits_ = encode(unpacked);
-
-        return result;
-    }
-
-    Posit round() const
-    {
-        // round to nearest
-        posit_unpacked unpacked = decode(bits_);
-        int exp = getExpFromKE(unpacked.k, unpacked.exp);
-
-        ap_fixed<frac_bit_size * 2, frac_bit_size> frac = unpacked.frac;
-        frac = frac << exp;
-        frac = hls::round(frac);
-        frac = frac >> exp;
-
-        unpacked.frac = frac;
-
-        Posit result;
-        result.encode(unpacked);
-
-        return result;
-    }
-
-    Posit ceil() const
-    {
-        // round to nearest
-        posit_unpacked unpacked = decode();
-        int exp = getExpFromKE(unpacked.k, unpacked.exp);
-
-        ap_fixed<frac_bit_size * 2, frac_bit_size> frac = unpacked.frac;
-        frac = frac << exp;
-        frac = hls::ceil(frac);
-        frac = frac >> exp;
-
-        unpacked.frac = frac;
-
-        Posit result;
-        result.bits_ = encode(unpacked);
-
-        return result;
-    }
-
-    Posit operator-() const
-    {
-        Posit result = *this;
-        result.bits_[nbits - 1] = !result.bits_[nbits - 1];
-        return result;
-    }
-
-    Posit &operator+=(const Posit &other)
-    {
-        *this = *this + other;
-        return *this;
-    }
-
-    Posit &operator-=(const Posit &other)
-    {
-        *this = *this - other;
-        return *this;
-    }
-
-    Posit &operator*=(const Posit &other)
-    {
-        *this = *this * other;
-        return *this;
-    }
-
-    Posit &operator/=(const Posit &other)
-    {
-        *this = *this / other;
-        return *this;
-    }
-
-    bool operator<(const Posit &rhs) const
-    {
-        posit_unpacked unpacked_1 = decode(bits_);
-        posit_unpacked unpacked_2 = rhs.decode(rhs.bits_);
-
-        if (unpacked_1.sign == unpacked_2.sign)
-        {
-            if (unpacked_1.k == unpacked_2.k)
-            {
-                if (unpacked_1.exp == unpacked_2.exp)
-                {
-                    if (unpacked_1.frac == unpacked_2.frac)
-                    {
-                        return false;
-                    }
-                    else
-                    {
-
-                        return unpacked_1.sign != (unpacked_1.frac < unpacked_2.frac);
-                    }
-                }
-                else
-                {
-                    return unpacked_1.sign != (unpacked_1.exp < unpacked_2.exp);
-                }
-            }
-            else
-            {
-                return unpacked_1.sign != (unpacked_1.k < unpacked_2.k);
-            }
-        }
-        else
-        {
-            return unpacked_1.sign;
-        }
-    }
-
-    bool operator>(const Posit &rhs) const
-    {
-        posit_unpacked unpacked_1 = decode(bits_);
-        posit_unpacked unpacked_2 = rhs.decode(rhs.bits_);
-
-        if (unpacked_1.sign == unpacked_2.sign)
-        {
-            if (unpacked_1.k == unpacked_2.k)
-            {
-                if (unpacked_1.exp == unpacked_2.exp)
-                {
-                    if (unpacked_1.frac == unpacked_2.frac)
-                    {
-                        return false;
-                    }
-                    else
-                    {
-
-                        return unpacked_1.sign != (unpacked_1.frac > unpacked_2.frac);
-                    }
-                }
-                else
-                {
-                    return unpacked_1.sign != (unpacked_1.exp > unpacked_2.exp);
-                }
-            }
-            else
-            {
-                return unpacked_1.sign != (unpacked_1.k > unpacked_2.k);
-            }
-        }
-        else
-        {
-            return !unpacked_1.sign;
-        }
-    }
-
-    bool operator<=(const Posit &rhs) const
-    {
-        posit_unpacked unpacked_1 = decode(bits_);
-        posit_unpacked unpacked_2 = rhs.decode(rhs.bits_);
-
-        if (unpacked_1.sign == unpacked_2.sign)
-        {
-            if (unpacked_1.k == unpacked_2.k)
-            {
-                if (unpacked_1.exp == unpacked_2.exp)
-                {
-                    if (unpacked_1.frac == unpacked_2.frac)
-                    {
-                        return true;
-                    }
-                    else
-                    {
-
-                        return unpacked_1.sign != (unpacked_1.frac <= unpacked_2.frac);
-                    }
-                }
-                else
-                {
-                    return unpacked_1.sign != (unpacked_1.exp <= unpacked_2.exp);
-                }
-            }
-            else
-            {
-                return unpacked_1.sign != (unpacked_1.k <= unpacked_2.k);
-            }
-        }
-        else
-        {
-            return unpacked_1.sign;
-        }
-    }
-
-    bool operator>=(const Posit &rhs) const
-    {
-        posit_unpacked unpacked_1 = decode(bits_);
-        posit_unpacked unpacked_2 = rhs.decode(rhs.bits_);
-
-        if (unpacked_1.sign == unpacked_2.sign)
-        {
-            if (unpacked_1.k == unpacked_2.k)
-            {
-                if (unpacked_1.exp == unpacked_2.exp)
-                {
-                    if (unpacked_1.frac == unpacked_2.frac)
-                    {
-                        return true;
-                    }
-                    else
-                    {
-
-                        return unpacked_1.sign != (unpacked_1.frac >= unpacked_2.frac);
-                    }
-                }
-                else
-                {
-                    return unpacked_1.sign != (unpacked_1.exp >= unpacked_2.exp);
-                }
-            }
-            else
-            {
-                return unpacked_1.sign != (unpacked_1.k >= unpacked_2.k);
-            }
-        }
-        else
-        {
-            return !unpacked_1.sign;
-        }
-    }
-
-    bool operator==(const Posit &rhs) const
-    {
-        if (bits_ == rhs.bits_)
-            return true;
-        else
-            return false;
-    }
-
-    bool operator!=(const Posit &rhs) const
-    {
-        if (bits_ != rhs.bits_)
-            return true;
-        else
-            return false;
-    }
-
-    Posit operator+(const Posit &rhs) const
-    {
-        posit_unpacked in1 = decode(bits_);
-        posit_unpacked in2 = rhs.decode(rhs.bits_);
-
-        bool is_inf = in1.is_inf || in2.is_inf;
-
-        int exp1 = getExpFromKE(in1.k, in1.exp);
-        int exp2 = getExpFromKE(in2.k, in2.exp);
-
-        // set biggest posit to be in1
-        int diff_texp = exp1 - exp2;
-
-        if (diff_texp < 0)
-        {
-            posit_unpacked paux = in1;
-            in1 = in2;
-            in2 = paux;
-
-            exp1 = exp2;
-            diff_texp = -diff_texp;
-        }
-
-        // add the sign back into the fraction, so that we can do the sum
-        ap_fixed<frac_bit_size + 2, 2> frac1 = in1.frac;
-        ap_fixed<frac_bit_size + 2, 2> frac2 = in2.frac;
-
-        if (in1.sign)
-            frac1 = -frac1;
-        else
-            frac1 = frac1;
-
-        if (in2.sign)
-            frac2 = -frac2;
-        else
-            frac2 = frac2;
-
-        // shift left in2, so that both have the same exponent
-        // for (int i = 0; i < diff_texp; i++)
-        //    frac2 = frac2 >> 1;
-        frac2 = frac2 >> diff_texp;
-
-        // do addition
-        ap_fixed<frac_bit_size + 4, 3> frac = frac1 + frac2;
-        int exp = exp1;
-
-        bool is_zero;
-        if (!is_inf && frac == 0)
-            is_zero = 1;
-        else
-            is_zero = 0;
-
-        // get sign and remove sign from frac
-        bool sign;
-
-        if (frac < 0)
-        {
-            frac = -frac;
-            sign = 1;
-        }
-        else
-        {
-            // frac = frac;
-            sign = 0;
-        }
-
-        // normalize
-        if (frac > 0)
-        {
-        Posit_add_while_1:
-            while (frac >= 2)
-            {
-                frac = frac >> 1;
-                exp++;
-            }
-
-        Posit_add_while_2:
-            while (frac < 1)
-            {
-                frac = frac << 1;
-                exp--;
-            }
-        }
-
-        // round to nearest
-        ap_ufixed<frac_bit_size + 1, 2> rfrac = frac;
-        if (frac[frac_bit_size + 4 - 4 - (frac_bit_size - 1)] == 1)
-        {
-            ap_ufixed<frac_bit_size, 1> one = 0;
-            one[0] = 1;
-            // if(pmantissa[0] == 0)
-            rfrac += one;
-            // pmantissa[0] = 1;
-        }
-
-        // normalize fraction (again)
-        if (rfrac >= 2)
-        {
-            rfrac = rfrac >> 1;
-            exp++;
-        }
-
-        int k, e;
-        getKEFromExp(exp, k, e);
-
-        posit_unpacked out;
-        out.sign = sign;
-        out.k = k;
-        out.exp = e;
-        out.frac = rfrac;
-        out.is_inf = 0;
-        out.is_zero = 0;
-
-        Posit output;
-        output.bits_ = encode(out);
-
-        return output;
-    }
-
-    Posit operator-(const Posit &rhs) const
-    {
-        Posit neg = rhs;
-        neg.bits_[nbits - 1] = !neg.bits_[nbits - 1];
-        Posit result = (*this) + neg;
-        return result;
-    }
-
-    Posit operator*(const Posit &rhs) const
-    {
-        posit_unpacked in1 = decode(bits_);
-        posit_unpacked in2 = rhs.decode(rhs.bits_);
-
-        bool sign;
-        ap_int<counter_bit_size + 2> k;
-        ap_uint<es + 2> exp;
-        ap_ufixed<frac_bit_size * 2, 2> frac;
-
-        bool is_inf = in1.is_inf || in2.is_inf;
-        bool is_zero;
-        if (is_inf)
-        {
-            is_zero = 0;
-            sign = 0;
-            k = 0;
-            exp = 0;
-            frac = 0;
-        }
-        else if (in1.is_zero || in2.is_zero)
-        {
-            is_zero = 1;
-            sign = 0;
-            k = 0;
-            exp = 0;
-            frac = 0;
-        }
-        else
-        {
-            is_zero = 0;
-            sign = in1.sign ^ in2.sign;
-            k = in1.k + in2.k;
-            exp = in1.exp + in2.exp;
-            frac = in1.frac * in2.frac;
-        }
-
-        // normalize fraction
-        if (frac >= 2)
-        {
-            frac = frac >> 1;
-            exp++;
-        }
-
-        // normalize exponent
-        if (exp >= max_exp_val)
-        {
-            exp -= max_exp_val;
-            k++;
-        }
-
-        // round to nearest
-        ap_ufixed<frac_bit_size + 1, 2> rfrac = frac;
-        if (frac[frac_bit_size * 2 - 3 - (frac_bit_size - 1)] == 1)
-        {
-            ap_ufixed<frac_bit_size, 1> one = 0;
-            one[0] = 1;
-            // if(pmantissa[0] == 0)
-            rfrac += one;
-            // pmantissa[0] = 1;
-        }
-
-        // normalize fraction (again)
-        if (rfrac >= 2)
-        {
-            rfrac = rfrac >> 1;
-            exp++;
-        }
-
-        // normalize exponent (again)
-        if (exp >= max_exp_val)
-        {
-            exp -= max_exp_val;
-            k++;
-        }
-
-        posit_unpacked out;
-        out.sign = sign;
-        out.k = k;
-        out.exp = exp;
-        out.frac = rfrac;
-        out.is_zero = is_zero;
-        out.is_inf = is_inf;
-
-        Posit output;
-        output.bits_ = output.encode(out);
-
-        return output;
-    }
-
-    Posit operator/(const Posit &rhs) const
-    {
-        posit_unpacked in1 = decode(bits_);
-        posit_unpacked in2 = rhs.decode(rhs.bits_);
-
-        bool is_inf = in1.is_inf || in2.is_inf;
-
-        bool sign;
-        ap_int<counter_bit_size + 2> k;
-        ap_int<es + 2> exp;
-        ap_ufixed<frac_bit_size * 2, 2> frac;
-
-        if (is_inf)
-        {
-            is_zero = 0;
-            sign = 0;
-            k = 0;
-            exp = 0;
-            frac = 0;
-        }
-        else if (in2.is_zero == 1)
-        {
-            is_inf = 1;
-            is_zero = 0;
-            sign = 0;
-            k = 0;
-            exp = 0;
-            frac = 0;
-        }
-        else if(in1.is_zero == 1)
-        {
-            is_zero = 1;
-            sign = 0;
-            k = 0;
-            exp = 0;
-            frac = 0;
-        }
-        else
-        {
-            sign = in1.sign ^ in2.sign;
-            k = in1.k - in2.k;
-            in1.exp - in2.exp;
-            frac = in1.frac / in2.frac;
-        }
-
-        // normalize fraction
-        if (frac < 1.0)
-        {
-            frac = frac << 1;
-            exp--;
-        }
-
-        // normalize exponent
-        if (exp < 0)
-        {
-            exp += max_exp_val;
-            k--;
-        }
-
-        /*
-        if (exp < 0)
-        {
-            exp += hls::pow(2, es);
-            k--;
-        }
-        */
-
-        // round to nearest
-        ap_ufixed<frac_bit_size + 1, 2> rfrac = frac;
-        if (frac[frac_bit_size * 2 - 3 - (frac_bit_size - 1)] == 1)
-        {
-            ap_ufixed<frac_bit_size, 1> one = 0;
-            one[0] = 1;
-            // if(pmantissa[0] == 0)
-            rfrac += one;
-            // pmantissa[0] = 1;
-        }
-
-        // normalize fraction (again)
-        if (rfrac >= 2)
-        {
-            rfrac = rfrac >> 1;
-            exp++;
-        }
-
-        // normalize exponent (again)
-        if (exp >= max_exp_val)
-        {
-            exp -= max_exp_val;
-            k++;
-        }
-
-        posit_unpacked out;
-        out.sign = sign;
-        out.k = k;
-        out.exp = exp;
-        out.frac = rfrac;
-        out.is_zero = 0;
-        out.is_inf = is_inf;
-
-        Posit output;
-        output.bits_ = output.encode(out);
-
-        return output;
-    }
-
-private:
-    int getExpFromKE(int k, int e) const
-    {
-        // #pragma HLS INLINE
-        // get exponent from k and e
-        return k * max_exp_val + e;
-    }
-
-    void getKEFromExp(int in_exp, int &out_k, int &out_e) const
-    {
-        // get k and e from floating point exponent
-        // How many times each exponent over - or under - flowed the valid interval
-        out_k = in_exp / max_exp_val; // works for negatives too
-
-        // New exponent in the allowed range (0, max_exp_val - 1)
-        out_e = in_exp % max_exp_val;
-
-        // If `a` and `b` have opposite signs and the remainder is non-zero,
-        // the truncated result is too large; subtract one to get the floor.
-        if (out_e < 0)
-            --out_k;
-    }
-
-    posit_unpacked decode(const ap_uint<nbits> &bits) const
-    {
-        posit_unpacked unpacked;
-
         bool simbol = bits[nbits - 2];
-        ap_uint<counter_bit_size> k;
+        ap_uint<kbits> k;
 
-        ap_uint<counter_bit_size> counter = 0;
+        ap_uint<kbits> counter = 0;
 
-        unpacked.sign = bits[nbits - 1];
-        unpacked.k = 0;
-        unpacked.exp = 0;
-        unpacked.frac = 0.0;
-        unpacked.is_zero = !bits[nbits - 1];
-        unpacked.is_inf = bits[nbits - 1];
+        // start as zero or inf depending on first bit
+        is_zero = !bits[nbits - 1];
+        is_inf = bits[nbits - 1];
+
+        sign = bits[nbits - 1];
+        k = 0;
+        exp = 0;
+        frac = 0.0;
 
         enum states
         {
@@ -1065,12 +147,7 @@ private:
                     k = nbits - 2 - bit;
                     // counter = nbits - 3 - bit;
 
-                    if (simbol == 0)
-                        unpacked.k = k - 1;
-                    else
-                        unpacked.k = -k;
                     counter = 0;
-                    unpacked.frac[frac_bit_size - 1] = 1;
                     state = E;
                 }
                 continue;
@@ -1079,29 +156,35 @@ private:
             if (state == E)
             {
                 // unpacked.exp[es - 1 - counter] = bits[bit];
-                unpacked.exp[bit - (nbits - 2 - k - es)] = bits[bit];
+                exp[bit - (nbits - 2 - k - es)] = bits[bit];
+
+                // if we reach this state, the number is not zero not infinite
+                is_inf = 0;
+                is_zero = 0;
 
                 counter++;
                 if (counter >= es)
                 {
                     state = F;
                     counter = 0;
+
+                    frac[fbits - 1] = 1;
+                    
+                    if (simbol == 0)
+                        k = k - 1;
+                    else
+                        k = -k;
                 }
                 continue;
             }
 
             if (state == F)
             {
-                unpacked.frac[frac_bit_size - 2 - counter] = bits[bit];
+                frac[fbits - 2 - counter] = bits[bit];
                 counter++;
                 continue;
             }
         }
-
-        unpacked.is_inf = 0;
-        unpacked.is_zero = 0;
-
-        return unpacked;
 
         /*
         posit_unpacked unpacked;
@@ -1254,69 +337,1131 @@ private:
         */
     }
 
-    ap_uint<nbits> encode(const posit_unpacked &unpacked) const
+    int getTotalExp() const
     {
-        ap_uint<nbits> bits;
+        // #pragma HLS INLINE
+        // get exponent from k and e
+        return k * (1 << ebits) + exp;
+    }
+};
 
-        // k bits
-        bool reg_bit;
-        int reg_len;
+template <int kbits, int ebits, int fbits>
+void getKEFromExp(int in_exp, int &out_k, int &out_e)
+{
+    // get k and e from floating point exponent
+    // How many times each exponent over - or under - flowed the valid interval
+    out_k = in_exp / (1 << ebits); // works for negatives too
 
-        // if the integer bit in the fraction is 0, then the whole number is zero
-        if (unpacked.is_zero == 1)
+    // New exponent in the allowed range (0, max_exp_val - 1)
+    out_e = in_exp % (1 << ebits);
+
+    // If `a` and `b` have opposite signs and the remainder is non-zero,
+    // the truncated result is too large; subtract one to get the floor.
+    if (out_e < 0)
+        --out_k;
+}
+
+template <int kbits, int ebits, int fbits>
+posit_unpacked<kbits, ebits, fbits> posit_adder(const posit_unpacked<kbits, ebits, fbits> &in1, const posit_unpacked<kbits, ebits, fbits> &in2)
+{
+    bool is_inf = in1.is_inf || in2.is_inf;
+
+    int exp1 = in1.getTotalExp();
+    int exp2 = in2.getTotalExp();
+
+    // set biggest posit to be in1
+    int diff_texp = exp1 - exp2;
+
+    ap_fixed<fbits + 2, 2> frac1;
+    ap_fixed<fbits + 2, 2> frac2;
+    int exp;
+
+    if (diff_texp > 0)
+    {
+        if (!in1.sign)
+            frac1 = in1.frac;
+        else
+            frac1 = -in1.frac;
+        if (!in2.sign)
+            frac2 = in2.frac;
+        else
+            frac2 = -in2.frac;
+        exp = exp1;
+    }
+    else
+    {
+        if (!in2.sign)
+            frac1 = in2.frac;
+        else
+            frac1 = -in2.frac;
+        if (!in1.sign)
+            frac2 = in1.frac;
+        else
+            frac2 = -in1.frac;
+        exp = exp2;
+
+        diff_texp = -diff_texp;
+    }
+
+    // shift left in2, so that both have the same exponent
+    // for (int i = 0; i < diff_texp; i++)
+    //    frac2 = frac2 >> 1;
+    frac2 = frac2 >> diff_texp;
+
+    // do addition
+    ap_fixed<fbits + 4, 3> frac = frac1 + frac2;
+
+    bool is_zero;
+    if (!is_inf && frac == 0)
+        is_zero = 1;
+    else
+        is_zero = 0;
+
+    // get sign and remove sign from frac
+    bool sign;
+
+    if (frac < 0)
+    {
+        frac = -frac;
+        sign = 1;
+    }
+    else
+    {
+        // frac = frac;
+        sign = 0;
+    }
+
+    // normalize
+    if (frac > 0)
+    {
+    Posit_add_while_1:
+        while (frac >= 2)
         {
-            bits[nbits - 1] = 0;
-            reg_bit = 0;
-            reg_len = nbits - 1;
+            frac = frac >> 1;
+            exp++;
         }
-        else if (unpacked.is_inf == 1)
+
+    Posit_add_while_2:
+        while (frac < 1)
         {
-            bits[nbits - 1] = 1;
-            reg_bit = 0;
-            reg_len = nbits - 1;
+            frac = frac << 1;
+            exp--;
+        }
+    }
+
+    // round to nearest
+    ap_ufixed<fbits + 1, 2> rfrac = frac;
+    if (frac[fbits + 4 - 4 - (fbits - 1)] == 1)
+    {
+        ap_ufixed<fbits, 1> one = 0;
+        one[0] = 1;
+        // if(pmantissa[0] == 0)
+        rfrac += one;
+        // pmantissa[0] = 1;
+    }
+
+    // normalize fraction (again)
+    if (rfrac >= 2)
+    {
+        rfrac = rfrac >> 1;
+        exp++;
+    }
+
+    int k, e;
+    getKEFromExp<kbits, ebits, fbits>(exp, k, e);
+
+    posit_unpacked<kbits, ebits, fbits> out;
+    out.sign = sign;
+    out.k = k;
+    out.exp = e;
+    out.frac = rfrac;
+    out.is_inf = is_inf;
+    out.is_zero = is_zero;
+
+    return out;
+}
+
+template <int kbits, int ebits, int fbits>
+posit_unpacked<kbits, ebits, fbits> posit_mult(const posit_unpacked<kbits, ebits, fbits> &in1, const posit_unpacked<kbits, ebits, fbits> &in2)
+{
+    bool sign;
+    ap_int<kbits + 2> k;
+    ap_uint<ebits + 2> exp;
+    ap_ufixed<fbits * 2, 2> frac;
+
+    bool is_inf = in1.is_inf || in2.is_inf;
+    bool is_zero;
+    if (is_inf)
+    {
+        is_zero = 0;
+        sign = 0;
+        k = 0;
+        exp = 0;
+        frac = 0;
+    }
+    else if (in1.is_zero || in2.is_zero)
+    {
+        is_zero = 1;
+        sign = 0;
+        k = 0;
+        exp = 0;
+        frac = 0;
+    }
+    else
+    {
+        is_zero = 0;
+        sign = in1.sign ^ in2.sign;
+        k = in1.k + in2.k;
+        exp = in1.exp + in2.exp;
+        frac = in1.frac * in2.frac;
+    }
+
+    // normalize fraction
+    if (frac >= 2)
+    {
+        frac = frac >> 1;
+        exp++;
+    }
+
+    // normalize exponent
+    if (exp >= (1 << ebits))
+    {
+        exp -= (1 << ebits);
+        k++;
+    }
+
+    // round to nearest
+    ap_ufixed<fbits + 1, 2> rfrac = frac;
+    if (frac[fbits * 2 - 3 - (fbits - 1)] == 1)
+    {
+        ap_ufixed<fbits, 1> one = 0;
+        one[0] = 1;
+        // if(pmantissa[0] == 0)
+        rfrac += one;
+        // pmantissa[0] = 1;
+    }
+
+    // normalize fraction (again)
+    if (rfrac >= 2)
+    {
+        rfrac = rfrac >> 1;
+        exp++;
+    }
+
+    // normalize exponent (again)
+    if (exp >= (1 << ebits))
+    {
+        exp -= (1 << ebits);
+        k++;
+    }
+
+    posit_unpacked<kbits, ebits, fbits> out;
+    out.sign = sign;
+    out.k = k;
+    out.exp = exp;
+    out.frac = rfrac;
+    out.is_zero = is_zero;
+    out.is_inf = is_inf;
+
+    return out;
+}
+
+template <int kbits, int ebits, int fbits>
+posit_unpacked<kbits, ebits, fbits> posit_div(const posit_unpacked<kbits, ebits, fbits> &in1, const posit_unpacked<kbits, ebits, fbits> &in2)
+{
+    bool is_inf = in1.is_inf || in2.is_inf;
+    bool is_zero;
+    bool sign;
+    ap_int<kbits + 2> k;
+    ap_int<ebits + 2> exp;
+    ap_ufixed<fbits * 2, 2> frac;
+
+    if (is_inf)
+    {
+        is_zero = 0;
+        sign = 0;
+        k = 0;
+        exp = 0;
+        frac = 0;
+    }
+    else if (in2.is_zero == 1)
+    {
+        is_inf = 1;
+        is_zero = 0;
+        sign = 0;
+        k = 0;
+        exp = 0;
+        frac = 0;
+    }
+    else if (in1.is_zero == 1)
+    {
+        is_zero = 1;
+        sign = 0;
+        k = 0;
+        exp = 0;
+        frac = 0;
+    }
+    else
+    {
+        is_zero = 0;
+        sign = in1.sign ^ in2.sign;
+        k = in1.k - in2.k;
+        exp = in1.exp - in2.exp;
+        frac = in1.frac / in2.frac;
+    }
+
+    // normalize fraction
+    if (frac < 1.0)
+    {
+        frac = frac << 1;
+        exp--;
+    }
+
+    // normalize exponent
+    if (exp < 0)
+    {
+        exp += (1 << ebits);
+        k--;
+    }
+
+    /*
+    if (exp < 0)
+    {
+        exp += hls::pow(2, es);
+        k--;
+    }
+    */
+
+    // round to nearest
+    ap_ufixed<fbits + 1, 2> rfrac = frac;
+    if (frac[fbits * 2 - 3 - (fbits - 1)] == 1)
+    {
+        ap_ufixed<fbits, 1> one = 0;
+        one[0] = 1;
+        // if(pmantissa[0] == 0)
+        rfrac += one;
+        // pmantissa[0] = 1;
+    }
+
+    // normalize fraction (again)
+    if (rfrac >= 2)
+    {
+        rfrac = rfrac >> 1;
+        exp++;
+    }
+
+    // normalize exponent (again)
+    if (exp >= (1 << ebits))
+    {
+        exp -= (1 << ebits);
+        k++;
+    }
+
+    posit_unpacked<kbits, ebits, fbits> out;
+    out.sign = sign;
+    out.k = k;
+    out.exp = exp;
+    out.frac = rfrac;
+    out.is_zero = is_zero;
+    out.is_inf = is_inf;
+
+    return out;
+}
+
+template <int kbits, int ebits, int fbits>
+posit_unpacked<kbits, ebits, fbits> posit_mac(const posit_unpacked<kbits, ebits, fbits> &in1, const posit_unpacked<kbits, ebits, fbits> &in2, const posit_unpacked<kbits, ebits, fbits> &in3)
+{
+    posit_unpacked<kbits, ebits, fbits> mult_result = posit_mult(in2, in3);
+    posit_unpacked<kbits, ebits, fbits> add_result = posit_adder(in1, mult_result);
+
+    return add_result;
+}
+
+template <int kbits, int ebits, int fbits>
+bool posit_lessthan(const posit_unpacked<kbits, ebits, fbits> &in1, const posit_unpacked<kbits, ebits, fbits> &in2)
+{
+    if (in1.sign == in2.sign)
+    {
+        if (in1.k == in2.k)
+        {
+            if (in1.exp == in2.exp)
+            {
+                if (in1.frac == in2.frac)
+                {
+                    return false;
+                }
+                else
+                {
+
+                    return in1.sign != (in1.frac < in2.frac);
+                }
+            }
+            else
+            {
+                return in1.sign != (in1.exp < in2.exp);
+            }
         }
         else
         {
-            bits[nbits - 1] = unpacked.sign;
-            reg_bit = unpacked.k >= 0 ? 0 : 1;
-            reg_len = unpacked.k >= 0 ? int(unpacked.k + 1) : int(-unpacked.k);
-            reg_len = hls::min(nbits - 1, reg_len);
+            return in1.sign != (in1.k < in2.k);
         }
+    }
+    else
+    {
+        return in1.sign;
+    }
+}
 
-        int reg_start = nbits - 2;
+template <int nbits, int ebits>
+class Posit
+{
+public:
+    // static constexpr int max_k_size = nbits / 2;
+    // static constexpr int k_bit_size = detail::clog2<nbits - 1>::value;
+    static constexpr int fbits = nbits - 3 - ebits + 1;
+    static constexpr int kbits = detail::clog2<nbits>::value + 1;
+    // static constexpr int max_count_size = nbits / 2;
 
-    Posit_encode_for:
-        for (int i = 0; i < reg_len; i++)
-        {
-            bits[reg_start - i] = reg_bit;
-        }
-
-        int reg_end = reg_start - reg_len;
-
-        if (reg_end >= 0)
-        {
-            bits[reg_end] = !reg_bit;
-        }
-
-        // exponent bits
-        int exp_start = nbits - 3 - reg_len;
-        int exp_end = hls::max(exp_start - es + 1, 0);
-        int exp_len = exp_start - exp_end + 1;
-
-        if (exp_len > 0)
-            bits(exp_start, exp_end) = unpacked.exp; // unpacked.exp(exp_len - 1, 0);
-
-        // fraction bits
-        int frac_start = exp_end - 1;
-        int frac_end = 0;
-        int frac_len = frac_start - frac_end + 1;
-
-        if (frac_len > 0)
-            bits(frac_start, frac_end) = unpacked.frac(frac_bit_size - 2, frac_bit_size - 1 - frac_len);
-
-        return bits;
+    Posit()
+    {
     }
 
+    Posit(const Posit &other)
+    {
+        bits_ = other.bits_;
+    }
+
+    Posit &operator=(const Posit &other)
+    {
+        bits_ = other.bits_;
+        /*
+        if (this != &other)
+        {
+            bits_ = other.bits_;
+        }
+        */
+        return *this;
+    }
+
+    Posit(int c)
+    {
+        // #pragma HLS INLINE
+
+        bool psign = c >= 0 ? 0 : 1;
+
+        // mantissa is just zeros
+        ap_ufixed<2, 1> pmantissa;
+
+        if (c == 0)
+            pmantissa[1] = 0.0;
+        else
+            pmantissa[1] = 1.0;
+
+        int fexponent = hls::log2(c);
+
+        int pk, pexp;
+        getKEFromExp<kbits, ebits, fbits>(fexponent, pk, pexp);
+
+        posit_unpacked<kbits, ebits, fbits> unpacked;
+        unpacked.sign = psign;
+        unpacked.frac = pmantissa;
+        unpacked.exp = pexp;
+        unpacked.k = pk;
+
+        bits_ = posit_encode(unpacked);
+    }
+
+    Posit(unsigned int c)
+    {
+        // #pragma HLS INLINE
+        bool psign = 0;
+
+        // mantissa is just zeros
+        ap_ufixed<2, 1> pmantissa;
+
+        if (c == 0)
+            pmantissa[1] = 0.0;
+        else
+            pmantissa[1] = 1.0;
+
+        int fexponent = hls::log2(c);
+
+        int pk, pexp;
+        getKEFromExp<kbits, ebits, fbits>(fexponent, pk, pexp);
+
+        posit_unpacked<kbits, ebits, fbits> unpacked;
+        unpacked.sign = psign;
+        unpacked.frac = pmantissa;
+        unpacked.exp = pexp;
+        unpacked.k = pk;
+
+        bits_ = posit_encode(unpacked);
+    }
+
+    Posit(float c)
+    {
+        // #pragma HLS INLINE
+
+        ap_uint<32> bits = *reinterpret_cast<ap_uint<32> *>(&c);
+        // unsigned int* bitsPtr = (unsigned int*)&c;
+        // unsigned int bits = *bitsPtr; // Dereference to get the raw bits
+
+        bool fsign = bits[31];
+        // remove bias from floating point exponent
+        // ap_int<9> fexponent = bits(30, 23) - 127;
+        int fexponent = bits(30, 23) - 127;
+        // get mantisa from floating point
+        ap_ufixed<24, 1> fmantissa;
+
+        if (c == 0.0f)
+            fmantissa[23] = 0;
+        else
+            fmantissa[23] = 1;
+
+        fmantissa(22, 0) = bits(22, 0);
+
+        // get sign from float sign
+        bool psign = fsign;
+
+        ap_ufixed<fbits + 1, 2> pmantissa = fmantissa;
+
+        // round to nearest
+        if (fmantissa[22 - (fbits - 1)] == 1)
+        {
+            ap_ufixed<fbits, 1> one = 0;
+            one[0] = 1;
+            // if(pmantissa[0] == 0)
+            pmantissa += one;
+            // pmantissa[0] = 1;
+        }
+
+        // normalize (necesary because of the rounding)
+        if (pmantissa >= 2.0)
+        {
+            pmantissa = pmantissa >> 1;
+            fexponent++;
+        }
+
+        int pk, pexp;
+        getKEFromExp<kbits, ebits, fbits>(fexponent, pk, pexp);
+
+        posit_unpacked<kbits, ebits, fbits> unpacked;
+        unpacked.sign = psign;
+        unpacked.frac = pmantissa;
+        unpacked.exp = pexp;
+        unpacked.k = pk;
+
+        bits_ = posit_encode(unpacked);
+    }
+
+    Posit(double c)
+    {
+        // #pragma HLS INLINE
+
+        ap_uint<64> bits = *reinterpret_cast<ap_uint<64> *>(&c);
+        // unsigned int* bitsPtr = (unsigned int*)&c;
+        // unsigned int bits = *bitsPtr; // Dereference to get the raw bits
+
+        bool is_zero;
+        bool is_inf;
+
+        bool fsign;
+        // ap_int<12> fexponent;
+        int fexponent;
+        // get mantisa from floating point
+        ap_ufixed<53, 1> fmantissa;
+
+        if (c == 0.0 || c == -0.0)
+        {
+            is_zero = 1;
+            is_inf = 0;
+            fsign = 0;
+            fexponent = 0;
+            fmantissa = 0;
+        }
+        else if (c == std::numeric_limits<double>::infinity() || c == -std::numeric_limits<double>::infinity())
+        {
+            is_zero = 0;
+            is_inf = 1;
+            fsign = 0;
+            fexponent = 0;
+            fmantissa = 0;
+        }
+        else
+        {
+            is_zero = 0;
+            is_inf = 0;
+            fsign = bits[63];
+            fexponent = bits(62, 52) - 1023; // remove bias from floating point exponent
+            fmantissa[52] = 1;
+            fmantissa(51, 0) = bits(51, 0);
+        }
+
+        // get sign from double sign
+        bool psign = fsign;
+
+        // get mantissa from double mantissa
+        ap_ufixed<fbits + 1, 2> pmantissa = fmantissa;
+
+        // round to nearest
+        if (fmantissa[51 - (fbits - 1)] == 1)
+        {
+            ap_ufixed<fbits, 1> one = 0;
+            one[0] = 1;
+            // if(pmantissa[0] == 0)
+            pmantissa += one;
+            // pmantissa[0] = 1;
+        }
+
+        // normalize (necesary because of the rounding)
+        if (pmantissa >= 2.0)
+        {
+            pmantissa = pmantissa >> 1;
+            fexponent++;
+        }
+
+        int pk, pexp;
+        getKEFromExp<kbits, ebits, fbits>(fexponent, pk, pexp);
+
+        posit_unpacked<kbits, ebits, fbits> unpacked;
+
+        unpacked.sign = psign;
+        unpacked.frac = pmantissa;
+        unpacked.exp = pexp;
+        unpacked.k = pk;
+        unpacked.is_zero = is_zero;
+        unpacked.is_inf = is_inf;
+
+        bits_ = unpacked.template encode<nbits, ebits>();
+    }
+
+    template <int fnbits, int fibits>
+    Posit(ap_fixed<fnbits, fibits> c)
+    {
+        // #pragma HLS INLINE
+
+        bool fsign = c >= 0 ? 0 : 1;
+        int fexponent = hls::log2(c(fnbits - 1, fnbits - fibits));
+
+        ap_ufixed<fnbits - fibits + 1, 1> fmantissa;
+
+        if (c == 0.0f)
+            fmantissa[fnbits - fibits] = 0;
+        else
+            fmantissa[fnbits - fibits] = 1;
+
+        fmantissa(fnbits - fibits - 1, 0) = c(fnbits - fibits - 1, 0);
+
+        // get sign from float sign
+        bool psign = fsign;
+
+        ap_ufixed<fbits + 1, 2> pmantissa = fmantissa;
+
+        int pk, pexp;
+        getKEFromExp<kbits, ebits, fbits>(fexponent, pk, pexp);
+
+        posit_unpacked<kbits, ebits, fbits> unpacked;
+        unpacked.sign = psign;
+        unpacked.frac = pmantissa;
+        unpacked.exp = pexp;
+        unpacked.k = pk;
+
+        bits_ = unpacked.encode();
+    }
+
+    operator int() const
+    {
+        // #pragma HLS INLINE
+
+        posit_unpacked<kbits, ebits, fbits> unpacked;
+        unpacked.decode(bits_);
+
+        if (unpacked.frac == 0.0)
+        {
+            return 0;
+        }
+        else
+        {
+            int exp = unpacked.getTotalExp();
+            int res = (1 << exp);
+            if (unpacked.sign)
+            {
+                res = -res;
+            }
+            return res;
+        }
+    }
+
+    operator float() const
+    {
+        // #pragma HLS INLINE
+
+        posit_unpacked<kbits, ebits, fbits> unpacked;
+        unpacked.decode(bits_);
+
+        ap_uint<32> bits = 0;
+
+        bits(31, 31) = unpacked.sign;
+
+        ap_uint<8> exponent;
+
+        if (unpacked.frac[fbits - 1] == 0)
+            exponent = 0;
+        else
+            exponent = unpacked.getExpFromKE() + 127;
+
+        bits(30, 23) = exponent;
+
+        if (23 >= fbits - 1)
+            bits(22, 22 - fbits + 2) = unpacked.frac(fbits - 2, 0);
+        else
+            bits(22, 0) = unpacked.frac(fbits - 2, fbits - 2 - 22);
+
+        float fresult = *reinterpret_cast<float *>(&bits);
+        return fresult;
+    }
+
+    operator double() const
+    {
+        // #pragma HLS INLINE
+
+        posit_unpacked<kbits, ebits, fbits> unpacked;
+        unpacked.template decode<nbits, ebits>(bits_);
+
+        ap_uint<64> bits;
+
+        if (unpacked.is_zero)
+        {
+            return double(0.0);
+        }
+
+        if (unpacked.is_inf)
+        {
+            return std::numeric_limits<double>::infinity();
+        }
+
+        bits[63] = unpacked.sign;
+
+        ap_uint<11> exponent;
+
+        if (unpacked.frac[fbits - 1] == 0)
+            exponent = 0;
+        else
+            exponent = unpacked.getTotalExp() + 1023;
+
+        bits(62, 52) = exponent;
+
+        if (52 >= fbits - 1)
+        {
+            bits(51, 51 - fbits + 2) = unpacked.frac(fbits - 2, 0);
+            bits(51 - fbits + 1, 0) = 0; // fill the rest with zeros
+        }
+        else
+        {
+            bits(51, 0) = unpacked.frac(fbits - 2, fbits - 2 - 51);
+        }
+
+        double fresult = *reinterpret_cast<double *>(&bits);
+        return fresult;
+    }
+
+    template <int fnbits, int fibits>
+    operator ap_fixed<fnbits, fibits>() const
+    {
+        // #pragma HLS INLINE
+
+        posit_unpacked<kbits, ebits, fbits> unpacked;
+        unpacked.decode<nbits, ebits>(bits_);
+
+        if (unpacked.frac == 0.0)
+        {
+            return 0;
+        }
+        else
+        {
+            int exp = unpacked.getTotalExp();
+            int res = (unpacked.frac << exp);
+            if (unpacked.sign)
+            {
+                res = -res;
+            }
+            return res;
+        }
+    }
+
+    Posit fabs() const
+    {
+        Posit result = *this;
+        if (result.bits_[nbits - 1] == 1)
+        {
+            result.bits_[nbits - 1] = 0; // set sign bit to 0
+        }
+
+        return result;
+    }
+
+    Posit floor() const
+    {
+        // floor to nearest
+        posit_unpacked<kbits, ebits, fbits> unpacked;
+        unpacked.decode<nbits, ebits>(bits_);
+
+        int exp = unpacked.getTotalExp();
+
+        ap_fixed<fbits * 2, fbits> frac = unpacked.frac;
+        frac = frac << exp;
+        frac = hls::floor(frac);
+        frac = frac >> exp;
+
+        unpacked.frac = frac;
+
+        Posit result;
+        result.bits_ = unpacked.template encode<nbits, ebits>();
+
+        return result;
+    }
+
+    Posit round() const
+    {
+        // round to nearest
+        posit_unpacked<kbits, ebits, fbits> unpacked;
+        unpacked.decode<nbits, ebits>(bits_);
+
+        int exp = unpacked.getTotalExp();
+
+        ap_fixed<fbits * 2, fbits> frac = unpacked.frac;
+        frac = frac << exp;
+        frac = hls::round(frac);
+        frac = frac >> exp;
+
+        unpacked.frac = frac;
+
+        Posit result;
+        result.bits_ = unpacked.template encode<nbits, ebits>();
+
+        return result;
+    }
+
+    Posit ceil() const
+    {
+        // round to nearest
+        posit_unpacked<kbits, ebits, fbits> unpacked;
+        unpacked.decode<nbits, ebits>(bits_);
+
+        int exp = unpacked.getTotalExp();
+
+        ap_fixed<fbits * 2, fbits> frac = unpacked.frac;
+        frac = frac << exp;
+        frac = hls::ceil(frac);
+        frac = frac >> exp;
+
+        unpacked.frac = frac;
+
+        Posit result;
+        result.bits_ = unpacked.template encode<nbits, ebits>();
+
+        return result;
+    }
+
+    Posit operator-() const
+    {
+        posit_unpacked<kbits, ebits, fbits> in1;
+
+        in1.template decode<nbits, ebits>(bits_);
+
+        if (!in1.is_zero)
+            in1.sign = !in1.sign;
+
+        Posit result;
+        result.bits_ = in1.template encode<nbits, ebits>();
+
+        return result;
+    }
+
+    Posit &operator+=(const Posit &rhs)
+    {
+        posit_unpacked<kbits, ebits, fbits> in1, in2;
+
+        in1.template decode<nbits, ebits>(bits_);
+        in2.template decode<nbits, ebits>(rhs.bits_);
+
+        posit_unpacked<kbits, ebits, fbits> out = posit_adder(in1, in2);
+
+        bits_ = out.template encode<nbits, ebits>();
+
+        return *this;
+    }
+
+    Posit &operator-=(const Posit &rhs)
+    {
+        posit_unpacked<kbits, ebits, fbits> in1, in2;
+        in1.template decode<nbits, ebits>(bits_);
+        in2.template decode<nbits, ebits>(rhs.bits_);
+
+        if (!in2.is_zero)
+            in2.sign = !in2.sign;
+
+        posit_unpacked<kbits, ebits, fbits> out = posit_adder(in1, in2);
+
+        bits_ = out.template encode<nbits, ebits>();
+
+        return *this;
+    }
+
+    Posit operator*=(const Posit &rhs)
+    {
+        posit_unpacked<kbits, ebits, fbits> in1, in2;
+        in1.template decode<nbits, ebits>(bits_);
+        in2.template decode<nbits, ebits>(rhs.bits_);
+
+        posit_unpacked<kbits, ebits, fbits> out = posit_mult(in1, in2);
+
+        bits_ = out.template encode<nbits, ebits>();
+
+        return *this;
+    }
+
+    Posit operator/=(const Posit &rhs)
+    {
+        posit_unpacked<kbits, ebits, fbits> in1, in2;
+        in1.template decode<nbits, ebits>(bits_);
+        in2.template decode<nbits, ebits>(rhs.bits_);
+
+        posit_unpacked<kbits, ebits, fbits> out = posit_div(in1, in2);
+
+        bits_ = out.template encode<nbits, ebits>();
+
+        return *this;
+    }
+
+    bool operator<(const Posit &rhs) const
+    {
+        posit_unpacked<kbits, ebits, fbits> in1, in2;
+        in1.template decode<nbits, ebits>(bits_);
+        in2.template decode<nbits, ebits>(rhs.bits_);
+
+        if (in1.sign == in2.sign)
+        {
+            if (in1.k == in2.k)
+            {
+                if (in1.exp == in2.exp)
+                {
+                    if (in1.frac == in2.frac)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+
+                        return in1.sign != (in1.frac < in2.frac);
+                    }
+                }
+                else
+                {
+                    return in1.sign != (in1.exp < in2.exp);
+                }
+            }
+            else
+            {
+                return in1.sign != (in1.k < in2.k);
+            }
+        }
+        else
+        {
+            return in1.sign;
+        }
+    }
+
+    bool operator>(const Posit &rhs) const
+    {
+        posit_unpacked<kbits, ebits, fbits> in1, in2;
+        in1.template decode<nbits, ebits>(bits_);
+        in2.template decode<nbits, ebits>(rhs.bits_);
+
+        if (in1.sign == in2.sign)
+        {
+            if (in1.k == in2.k)
+            {
+                if (in1.exp == in2.exp)
+                {
+                    if (in1.frac == in2.frac)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+
+                        return in1.sign != (in1.frac > in2.frac);
+                    }
+                }
+                else
+                {
+                    return in1.sign != (in1.exp > in2.exp);
+                }
+            }
+            else
+            {
+                return in1.sign != (in1.k > in2.k);
+            }
+        }
+        else
+        {
+            return !in1.sign;
+        }
+    }
+
+    bool operator<=(const Posit &rhs) const
+    {
+        posit_unpacked<kbits, ebits, fbits> in1, in2;
+        in1.template decode<nbits, ebits>(bits_);
+        in2.template decode<nbits, ebits>(rhs.bits_);
+
+        if (in1.sign == in2.sign)
+        {
+            if (in1.k == in2.k)
+            {
+                if (in1.exp == in2.exp)
+                {
+                    if (in1.frac == in2.frac)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+
+                        return in1.sign != (in1.frac <= in2.frac);
+                    }
+                }
+                else
+                {
+                    return in1.sign != (in1.exp <= in2.exp);
+                }
+            }
+            else
+            {
+                return in1.sign != (in1.k <= in2.k);
+            }
+        }
+        else
+        {
+            return in1.sign;
+        }
+    }
+
+    bool operator>=(const Posit &rhs) const
+    {
+        posit_unpacked<kbits, ebits, fbits> in1, in2;
+        in1.template decode<nbits, ebits>(bits_);
+        in2.template decode<nbits, ebits>(rhs.bits_);
+
+        if (in1.sign == in2.sign)
+        {
+            if (in1.k == in2.k)
+            {
+                if (in1.exp == in2.exp)
+                {
+                    if (in1.frac == in2.frac)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+
+                        return in1.sign != (in1.frac >= in2.frac);
+                    }
+                }
+                else
+                {
+                    return in1.sign != (in1.exp >= in2.exp);
+                }
+            }
+            else
+            {
+                return in1.sign != (in1.k >= in2.k);
+            }
+        }
+        else
+        {
+            return !in1.sign;
+        }
+    }
+
+    bool operator==(const Posit &rhs) const
+    {
+        if (bits_ == rhs.bits_)
+            return true;
+        else
+            return false;
+    }
+
+    bool operator!=(const Posit &rhs) const
+    {
+        if (bits_ != rhs.bits_)
+            return true;
+        else
+            return false;
+    }
+
+    Posit operator+(const Posit &rhs) const
+    {
+        posit_unpacked<kbits, ebits, fbits> in1, in2;
+        in1.template decode<nbits, ebits>(bits_);
+        in2.template decode<nbits, ebits>(rhs.bits_);
+
+        posit_unpacked<kbits, ebits, fbits> out = posit_adder(in1, in2);
+
+        Posit result;
+        result.bits_ = out.template encode<nbits, ebits>();
+
+        return result;
+    }
+
+    Posit operator-(const Posit &rhs) const
+    {
+        posit_unpacked<kbits, ebits, fbits> in1, in2;
+        in1.template decode<nbits, ebits>(bits_);
+        in2.template decode<nbits, ebits>(rhs.bits_);
+
+        if (!in2.is_zero)
+            in2.sign = !in2.sign;
+
+        posit_unpacked<kbits, ebits, fbits> out = posit_adder(in1, in2);
+
+        Posit result;
+        result.bits_ = out.template encode<nbits, ebits>();
+
+        return result;
+    }
+
+    Posit operator*(const Posit &rhs) const
+    {
+        posit_unpacked<kbits, ebits, fbits> in1, in2;
+        in1.template decode<nbits, ebits>(bits_);
+        in2.template decode<nbits, ebits>(rhs.bits_);
+
+        posit_unpacked<kbits, ebits, fbits> out = posit_mult(in1, in2);
+
+        Posit result;
+        result.bits_ = out.template encode<nbits, ebits>();
+
+        return result;
+    }
+
+    Posit operator/(const Posit &rhs) const
+    {
+        posit_unpacked<kbits, ebits, fbits> in1, in2;
+        in1.template decode<nbits, ebits>(bits_);
+        in2.template decode<nbits, ebits>(rhs.bits_);
+
+        posit_unpacked<kbits, ebits, fbits> out = posit_div(in1, in2);
+
+        Posit result;
+        result.bits_ = out.template encode<nbits, ebits>();
+
+        return result;
+    }
+
+private:
     ap_uint<nbits> bits_;
 };
 
