@@ -1,8 +1,8 @@
 #pragma once
 
-#include "hls_math.h" //for things like hls::sin
-#include "ap_int.h"   //to use ap_int vitis hls data type
-#include "ap_fixed.h" //in case we want to use vitis hls fixed point data type
+#include "hls_math.h" 
+#include "ap_int.h"   
+#include "ap_fixed.h" 
 
 template <int nbits, int es>
 class FloatX

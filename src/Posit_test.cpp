@@ -68,11 +68,36 @@ int main(void)
             }
 
             Posit<nbits, es> b_mixed(b);
+            Posit<nbits, es> b_flaot_mixed((float)b);
+            Posit<nbits, es> b_int_mixed((int)b);
+            Posit<nbits, es> b_uint_mixed((unsigned int)fabs(b));
+
             double b_double = double(b_mixed);
+            float b_float = float(b_flaot_mixed);
+            int b_int = int(b_int_mixed);
+            unsigned int b_uint = (unsigned int)(b_uint_mixed);
 
             if (b != b_double)
             {
                 std::cout << "b is not equal: " << b << " != " << b_double << std::endl;
+                failed = true;
+            }
+
+            if (float(b) != b_float)
+            {
+                std::cout << "float(b) is not equal: " << float(b) << " != " << b_float << std::endl;
+                failed = true;
+            }
+
+            if (int(b) != b_int)
+            {
+                std::cout << "int(b) is not equal: " << int(b) << " != " << b_int << std::endl;
+                failed = true;
+            }
+
+            if ((unsigned int)(fabs(b)) != b_uint)
+            {
+                std::cout << "(unsigned int)(b) is not equal: " << (unsigned int)(fabs(b)) << " != " << b_uint << std::endl;
                 failed = true;
             }
 
@@ -155,7 +180,6 @@ int main(void)
                 failed = true;
             }
 
-            /*
             bool less_mixed = a_mixed < b_mixed;
             if (less != less_mixed)
             {
@@ -181,7 +205,7 @@ int main(void)
             }
 
             bool greater_or_equal_mixed = a_mixed >= b_mixed;
-            if (less_or_equal != less_or_equal_mixed)
+            if (greater_or_equal != greater_or_equal_mixed)
             {
                 std::cout << "error: in: " << a << " >= " << b << " = " << greater_or_equal << std::endl;
                 std::cout << a_double << " >= " << b_double << " = " << greater_or_equal_mixed << std::endl;
@@ -239,7 +263,6 @@ int main(void)
                 std::cout << ceil_ << " != " << ceil_double << std::endl;
                 failed = true;
             }
-            */
 
             Posit<nbits, es> neg_mixed = -b_mixed;
             double neg_double = double(neg_mixed);
