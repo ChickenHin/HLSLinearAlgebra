@@ -14,10 +14,10 @@ int main(void)
     double add_max_diff = 0.0f;
     double sub_max_diff = 0.0f;
     double mul_max_diff = 0.0f;
-    double div_max_diff = 0.1f;
+    double div_max_diff = 0.0001f;
 
-    double max = pow(2.0, 6);
-    double step = pow(2.0, -2);
+    double max = pow(2.0, 4);
+    double step = pow(2.0, -4);
 
     for (double a = -max; a < max; a += step)
     {
@@ -261,7 +261,7 @@ int main(void)
             {
                 std::cout << "error: in: ceil(" << b << ") " << std::endl;
                 std::cout << ceil_ << " != " << ceil_double << std::endl;
-                //failed = true;
+                // failed = true;
             }
 
             Posit<nbits, es> neg_mixed = -b_mixed;

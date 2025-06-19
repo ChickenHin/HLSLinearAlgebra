@@ -800,38 +800,34 @@ posit_unpacked<kbits, ebits, fbits> posit_floor(const posit_unpacked<kbits, ebit
 {
     int exp = in1.getTotalExp();
 
-    ap_fixed<fbits + 2, 3> frac = in1.frac;
-    ap_fixed<fbits + 2, 3> one = 0;
+    ap_fixed<fbits * 2, fbits> frac = in1.frac;
 
-    if (exp < -3)
+    frac = frac << exp;
+    if (in1.sign && frac(fbits - 1, 0) != 0)
+    {
+        frac(fbits - 1, 0) = 0;
+        frac = frac + 1;
+    }
+    else
     {
         frac(fbits - 1, 0) = 0;
     }
 
-    if (exp >= -3 && exp < fbits)
+    frac = frac >> exp;
+
+    while (frac >= 2)
     {
-        // in1.frac(fbits - 2 - exp, 0) = 0;
-        if (in1.sign && frac(fbits - 2 - exp, 0) != 0)
-        {
-            frac(fbits - 2 - exp, 0) = 0;
-            one[fbits - 1 - exp] = 1;
-            frac = frac + one;
-            if (frac >= 2)
-            {
-                frac = frac >> 1;
-                exp = exp + 1;
-            }
-        }
-        else
-        {
-            frac(fbits - 2 - exp, 0) = 0;
-        }
+        frac = frac >> 1;
+        exp = exp + 1;
     }
 
     posit_unpacked<kbits, ebits, fbits> result;
 
     result.sign = in1.sign;
-    result.is_zero = in1.is_zero;
+    if (frac == 0)
+        result.is_zero = 1;
+    else
+        result.is_zero = 0;
     result.is_inf = in1.is_inf;
     result.frac = frac;
     result.setKEFromTotalExp(exp);
@@ -843,38 +839,34 @@ posit_unpacked<kbits, ebits, fbits> posit_round(const posit_unpacked<kbits, ebit
 {
     int exp = in1.getTotalExp();
 
-    ap_fixed<fbits + 2, 3> frac = in1.frac;
-    ap_fixed<fbits + 2, 3> one = 0;
+    ap_fixed<fbits * 2, fbits> frac = in1.frac;
 
-    if (exp < -3)
+    frac = frac << exp;
+    if (frac[fbits - 1] != 0)
+    {
+        frac(fbits - 1, 0) = 0;
+        frac = frac + 1;
+    }
+    else
     {
         frac(fbits - 1, 0) = 0;
     }
 
-    if (exp >= -3 && exp < fbits)
+    frac = frac >> exp;
+
+    while (frac >= 2)
     {
-        // in1.frac(fbits - 2 - exp, 0) = 0;
-        if (frac[fbits - 2 - exp] != 0)
-        {
-            frac(fbits - 2 - exp, 0) = 0;
-            one[fbits - 1 - exp] = 1;
-            frac = frac + one;
-            if (frac >= 2)
-            {
-                frac = frac >> 1;
-                exp = exp + 1;
-            }
-        }
-        else
-        {
-            frac(fbits - 2 - exp, 0) = 0;
-        }
+        frac = frac >> 1;
+        exp = exp + 1;
     }
 
     posit_unpacked<kbits, ebits, fbits> result;
 
     result.sign = in1.sign;
-    result.is_zero = in1.is_zero;
+    if (frac == 0)
+        result.is_zero = 1;
+    else
+        result.is_zero = 0;
     result.is_inf = in1.is_inf;
     result.frac = frac;
     result.setKEFromTotalExp(exp);
@@ -886,38 +878,34 @@ posit_unpacked<kbits, ebits, fbits> posit_ceil(const posit_unpacked<kbits, ebits
 {
     int exp = in1.getTotalExp();
 
-    ap_fixed<fbits + 2, 3> frac = in1.frac;
-    ap_fixed<fbits + 2, 3> one = 0;
+    ap_fixed<fbits * 2, fbits> frac = in1.frac;
 
-    if (exp < -1)
+    frac = frac << exp;
+    if (!in1.sign && frac(fbits - 1, 0) != 0)
+    {
+        frac(fbits - 1, 0) = 0;
+        frac = frac + 1;
+    }
+    else
     {
         frac(fbits - 1, 0) = 0;
     }
 
-    if (exp >= -1 && exp < fbits)
+    frac = frac >> exp;
+
+    while (frac >= 2)
     {
-        // in1.frac(fbits - 2 - exp, 0) = 0;
-        if (!in1.sign && frac(fbits - 2 - exp, 0) != 0)
-        {
-            frac(fbits - 2 - exp, 0) = 0;
-            one[fbits - 1 - exp] = 1;
-            frac = frac + one;
-            if (frac >= 2)
-            {
-                frac = frac >> 1;
-                exp = exp + 1;
-            }
-        }
-        else
-        {
-            frac(fbits - 2 - exp, 0) = 0;
-        }
+        frac = frac >> 1;
+        exp = exp + 1;
     }
 
     posit_unpacked<kbits, ebits, fbits> result;
 
     result.sign = in1.sign;
-    result.is_zero = in1.is_zero;
+    if (frac == 0)
+        result.is_zero = 1;
+    else
+        result.is_zero = 0;
     result.is_inf = in1.is_inf;
     result.frac = frac;
     result.setKEFromTotalExp(exp);
