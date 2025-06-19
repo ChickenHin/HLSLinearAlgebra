@@ -792,69 +792,136 @@ posit_unpacked<kbits, ebits, fbits> posit_fabs(const posit_unpacked<kbits, ebits
     {
         result.sign = 0; // set sign to 0
     }
-
     return result;
 }
 
 template <int kbits, int ebits, int fbits>
 posit_unpacked<kbits, ebits, fbits> posit_floor(const posit_unpacked<kbits, ebits, fbits> &in1)
 {
-    // floor to nearest
-    posit_unpacked<kbits, ebits, fbits> unpacked = in1;
+    int exp = in1.getTotalExp();
 
-    ap_fixed<fbits * 2, fbits> frac = unpacked.frac;
+    ap_fixed<fbits + 2, 3> frac = in1.frac;
+    ap_fixed<fbits + 2, 3> one = 0;
 
-    int exp = unpacked.getTotalExp();
+    if (exp < -3)
+    {
+        frac(fbits - 1, 0) = 0;
+    }
 
-    frac = frac << exp;
+    if (exp >= -3 && exp < fbits)
+    {
+        // in1.frac(fbits - 2 - exp, 0) = 0;
+        if (in1.sign && frac(fbits - 2 - exp, 0) != 0)
+        {
+            frac(fbits - 2 - exp, 0) = 0;
+            one[fbits - 1 - exp] = 1;
+            frac = frac + one;
+            if (frac >= 2)
+            {
+                frac = frac >> 1;
+                exp = exp + 1;
+            }
+        }
+        else
+        {
+            frac(fbits - 2 - exp, 0) = 0;
+        }
+    }
 
-    if (unpacked.sign)
-        frac = hls::ceil(frac);
-    else
-        frac = hls::floor(frac);
+    posit_unpacked<kbits, ebits, fbits> result;
 
-    frac = frac >> exp;
-
-    unpacked.frac = frac;
-
-    return unpacked;
+    result.sign = in1.sign;
+    result.is_zero = in1.is_zero;
+    result.is_inf = in1.is_inf;
+    result.frac = frac;
+    result.setKEFromTotalExp(exp);
+    return result;
 }
 
 template <int kbits, int ebits, int fbits>
 posit_unpacked<kbits, ebits, fbits> posit_round(const posit_unpacked<kbits, ebits, fbits> &in1)
 {
-    // round to nearest
-    posit_unpacked<kbits, ebits, fbits> unpacked;
-    unpacked.template decode<nbits, ebits>(bits_);
+    int exp = in1.getTotalExp();
 
-    int exp = unpacked.getTotalExp();
+    ap_fixed<fbits + 2, 3> frac = in1.frac;
+    ap_fixed<fbits + 2, 3> one = 0;
 
-    ap_fixed<fbits * 2, fbits> frac = unpacked.frac;
-    frac = frac << exp;
-    frac = hls::round(frac);
-    frac = frac >> exp;
+    if (exp < -3)
+    {
+        frac(fbits - 1, 0) = 0;
+    }
 
-    unpacked.frac = frac;
+    if (exp >= -3 && exp < fbits)
+    {
+        // in1.frac(fbits - 2 - exp, 0) = 0;
+        if (frac[fbits - 2 - exp] != 0)
+        {
+            frac(fbits - 2 - exp, 0) = 0;
+            one[fbits - 1 - exp] = 1;
+            frac = frac + one;
+            if (frac >= 2)
+            {
+                frac = frac >> 1;
+                exp = exp + 1;
+            }
+        }
+        else
+        {
+            frac(fbits - 2 - exp, 0) = 0;
+        }
+    }
 
-    return unpacked;
+    posit_unpacked<kbits, ebits, fbits> result;
+
+    result.sign = in1.sign;
+    result.is_zero = in1.is_zero;
+    result.is_inf = in1.is_inf;
+    result.frac = frac;
+    result.setKEFromTotalExp(exp);
+    return result;
 }
 
 template <int kbits, int ebits, int fbits>
 posit_unpacked<kbits, ebits, fbits> posit_ceil(const posit_unpacked<kbits, ebits, fbits> &in1)
 {
-    // round to nearest
-    posit_unpacked<kbits, ebits, fbits> unpacked = in1;
+    int exp = in1.getTotalExp();
 
-    int exp = unpacked.getTotalExp();
+    ap_fixed<fbits + 2, 3> frac = in1.frac;
+    ap_fixed<fbits + 2, 3> one = 0;
 
-    ap_fixed<fbits * 2, fbits> frac = unpacked.frac;
-    frac = frac << exp;
-    frac = hls::ceil(frac);
-    frac = frac >> exp;
+    if (exp < -1)
+    {
+        frac(fbits - 1, 0) = 0;
+    }
 
-    unpacked.frac = frac;
+    if (exp >= -1 && exp < fbits)
+    {
+        // in1.frac(fbits - 2 - exp, 0) = 0;
+        if (!in1.sign && frac(fbits - 2 - exp, 0) != 0)
+        {
+            frac(fbits - 2 - exp, 0) = 0;
+            one[fbits - 1 - exp] = 1;
+            frac = frac + one;
+            if (frac >= 2)
+            {
+                frac = frac >> 1;
+                exp = exp + 1;
+            }
+        }
+        else
+        {
+            frac(fbits - 2 - exp, 0) = 0;
+        }
+    }
 
-    return unpacked;
+    posit_unpacked<kbits, ebits, fbits> result;
+
+    result.sign = in1.sign;
+    result.is_zero = in1.is_zero;
+    result.is_inf = in1.is_inf;
+    result.frac = frac;
+    result.setKEFromTotalExp(exp);
+    return result;
 }
 
 template <int nbits, int ebits>
@@ -1297,91 +1364,6 @@ public:
         }
     }
 
-    Posit fabs() const
-    {
-        Posit result;
-
-        posit_unpacked<kbits, ebits, fbits> in1;
-        in1.template decode<nbits, ebits>(bits_);
-        if (!in1.is_zero && !in1.is_inf)
-        {
-            in1.sign = 0; // set sign to 0
-        }
-
-        result.bits_ = in1.template encode<nbits, ebits>();
-
-        return result;
-    }
-
-    Posit floor() const
-    {
-        // floor to nearest
-        posit_unpacked<kbits, ebits, fbits> unpacked;
-        unpacked.template decode<nbits, ebits>(bits_);
-
-        ap_fixed<fbits * 2, fbits> frac = unpacked.frac;
-
-        int exp = unpacked.getTotalExp();
-
-        frac = frac << exp;
-
-        if (unpacked.sign)
-            frac = hls::ceil(frac);
-        else
-            frac = hls::floor(frac);
-
-        frac = frac >> exp;
-
-        unpacked.frac = frac;
-
-        Posit result;
-        result.bits_ = unpacked.template encode<nbits, ebits>();
-
-        return result;
-    }
-
-    Posit round() const
-    {
-        // round to nearest
-        posit_unpacked<kbits, ebits, fbits> unpacked;
-        unpacked.template decode<nbits, ebits>(bits_);
-
-        int exp = unpacked.getTotalExp();
-
-        ap_fixed<fbits * 2, fbits> frac = unpacked.frac;
-        frac = frac << exp;
-        frac = hls::round(frac);
-        frac = frac >> exp;
-
-        unpacked.frac = frac;
-
-        Posit result;
-        result.bits_ = unpacked.template encode<nbits, ebits>();
-
-        return result;
-    }
-
-    Posit ceil() const
-    {
-        // round to nearest
-        posit_unpacked<kbits, ebits, fbits> unpacked;
-        unpacked.template decode<nbits, ebits>(bits_);
-
-        int exp = unpacked.getTotalExp();
-
-        ap_fixed<fbits * 2, fbits> frac = unpacked.frac;
-        frac = frac << exp;
-        frac = hls::ceil(frac);
-        frac = frac >> exp;
-
-        unpacked.frac = frac;
-
-        Posit result;
-        result.bits_ = unpacked.template encode<nbits, ebits>();
-
-        return result;
-    }
-
     Posit operator-() const
     {
         posit_unpacked<kbits, ebits, fbits> in1;
@@ -1564,35 +1546,70 @@ public:
         return result;
     }
 
+    Posit fabs() const
+    {
+        posit_unpacked<kbits, ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        posit_unpacked<kbits, ebits, fbits> out = posit_fabs(in1);
+        Posit result;
+        result.bits_ = out.template encode<nbits, ebits>();
+        return result;
+    }
+
+    Posit floor() const
+    {
+        posit_unpacked<kbits, ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        posit_unpacked<kbits, ebits, fbits> out = posit_floor(in1);
+        Posit result;
+        result.bits_ = out.template encode<nbits, ebits>();
+        return result;
+    }
+
+    Posit round() const
+    {
+        posit_unpacked<kbits, ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        posit_unpacked<kbits, ebits, fbits> out = posit_round(in1);
+        Posit result;
+        result.bits_ = out.template encode<nbits, ebits>();
+        return result;
+    }
+
+    Posit ceil() const
+    {
+        posit_unpacked<kbits, ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        posit_unpacked<kbits, ebits, fbits> out = posit_ceil(in1);
+        Posit result;
+        result.bits_ = out.template encode<nbits, ebits>();
+        return result;
+    }
+
 private:
     ap_uint<nbits> bits_;
 };
 
-template <int nbits, int es>
-Posit<nbits, es> fabs(const Posit<nbits, es> &p)
+template <int nbits, int ebits>
+Posit<nbits, ebits> fabs(const Posit<nbits, ebits> &p)
 {
-    posit_unpacked<Posit<nbits, es>::kbits, Posit<nbits, es>::ebits, Posit<nbits, es>::fbits> in1;
-    in1.template decode<nbits, es>(p.bits_);
-    in1 = posit_fabs(in1);
-    Posit<nbits, es> result;
-    result.bits_ = in1.template encode<nbits, es>();
-    return result;
+    return p.fabs();
 }
 
-template <int nbits, int es>
-Posit<nbits, es> floor(const Posit<nbits, es> &p)
+template <int nbits, int ebits>
+Posit<nbits, ebits> floor(const Posit<nbits, ebits> &p)
 {
     return p.floor();
 }
 
-template <int nbits, int es>
-Posit<nbits, es> round(const Posit<nbits, es> &p)
+template <int nbits, int ebits>
+Posit<nbits, ebits> round(const Posit<nbits, ebits> &p)
 {
     return p.round();
 }
 
-template <int nbits, int es>
-Posit<nbits, es> ceil(const Posit<nbits, es> &p)
+template <int nbits, int ebits>
+Posit<nbits, ebits> ceil(const Posit<nbits, ebits> &p)
 {
     return p.ceil();
 }
