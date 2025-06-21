@@ -46,11 +46,9 @@ public:
     {
         ap_uint<nbits> bits;
 
-        // k bits
         bool reg_bit;
         int reg_len;
 
-        // if the integer bit in the fraction is 0, then the whole number is zero
         if (is_zero == 1)
         {
             bits[nbits - 1] = 0;
@@ -65,9 +63,23 @@ public:
         }
         else
         {
-            bits[nbits - 1] = sign;
             reg_bit = k >= 0 ? 0 : 1;
             reg_len = k >= 0 ? int(k + 1) : int(-k);
+
+            if(reg_len > nbits - 1)
+            {
+                reg_bit = 0;
+                if(k > 0)
+                    bits[nbits - 1] = 1;
+                else
+                    bits[nbits - 1] = 0;
+            }
+            else
+            {
+                reg_bit = k >= 0 ? 0 : 1;
+                bits[nbits - 1] = sign;
+            }
+
             reg_len = hls::min(nbits - 1, reg_len);
         }
 
@@ -109,9 +121,9 @@ public:
     void decode(const ap_uint<nbits> &bits)
     {
         bool simbol = bits[nbits - 2];
-        ap_uint<kbits> lenght = 0;
-        ap_uint<kbits> e_counter = 0;
-        ap_uint<kbits> f_counter = 0;
+        int lenght = 0;
+        int e_counter = 0;
+        int f_counter = 0;
 
         // start as zero or inf depending on first bit
         is_zero = !bits[nbits - 1];
@@ -327,14 +339,14 @@ public:
         */
     }
 
-    ap_int<kbits + ebits> getTotalExp() const
+    int getTotalExp() const
     {
         // #pragma HLS INLINE
         // get exponent from k and e
         return k * (1 << ebits) + exp;
     }
 
-    void setKEFromTotalExp(ap_int<kbits + ebits> in_exp)
+    void setKEFromTotalExp(int in_exp)
     {
         // get k and e from floating point exponent
         // How many times each exponent over - or under - flowed the valid interval
@@ -358,8 +370,10 @@ public:
     // the max amount of bits for r is nbits-1 bits, nbits-2 bits beeing 0 (or 1), and the last beeing 1 (or 0)
     // k is the amount of counted bits
     // which can be stored in log2(nbits - 2) bits
-    ap_int<kbits> k;
-    ap_int<ebits + 1> exp;
+    //ap_int<kbits> k;
+    //ap_int<ebits + 1> exp;
+    int k;
+    int exp;
     // the max amount of bits for frac is nbits - 1 (sign) - 2 (min bits for k) - es;
     ap_ufixed<fbits, 1> frac;
 };
@@ -369,15 +383,15 @@ posit_unpacked<kbits, ebits, fbits> posit_adder(const posit_unpacked<kbits, ebit
 {
     bool is_inf = in1.is_inf || in2.is_inf;
 
-    ap_int<kbits + ebits> exp1 = in1.getTotalExp();
-    ap_int<kbits + ebits> exp2 = in2.getTotalExp();
+    int exp1 = in1.getTotalExp();
+    int exp2 = in2.getTotalExp();
 
     // set biggest posit to be in1
-    ap_int<kbits + ebits> diff_texp = exp1 - exp2;
+    int diff_texp = exp1 - exp2;
 
     ap_fixed<fbits + 2, 2> frac1;
     ap_fixed<fbits + 2, 2> frac2;
-    ap_int<kbits + ebits> exp;
+    int exp;
 
     if (diff_texp > 0)
     {
@@ -486,8 +500,8 @@ template <int kbits, int ebits, int fbits>
 posit_unpacked<kbits, ebits, fbits> posit_mult(const posit_unpacked<kbits, ebits, fbits> &in1, const posit_unpacked<kbits, ebits, fbits> &in2)
 {
     bool sign;
-    ap_int<kbits + 2> k;
-    ap_uint<ebits + 2> exp;
+    int k;
+    unsigned int exp;
     ap_ufixed<fbits * 2, 2> frac;
 
     bool is_inf = in1.is_inf || in2.is_inf;
@@ -573,8 +587,8 @@ posit_unpacked<kbits, ebits, fbits> posit_div(const posit_unpacked<kbits, ebits,
     bool is_inf = in1.is_inf || in2.is_inf;
     bool is_zero;
     bool sign;
-    ap_int<kbits + 2> k;
-    ap_int<ebits + 2> exp;
+    int k;
+    int exp;
     ap_ufixed<fbits * 2, 2> frac;
 
     if (is_inf)
@@ -1397,7 +1411,7 @@ public:
         return *this;
     }
 
-    Posit operator*=(const Posit &rhs)
+    Posit &operator*=(const Posit &rhs)
     {
         posit_unpacked<kbits, ebits, fbits> in1, in2;
         in1.template decode<nbits, ebits>(bits_);
@@ -1410,7 +1424,7 @@ public:
         return *this;
     }
 
-    Posit operator/=(const Posit &rhs)
+    Posit &operator/=(const Posit &rhs)
     {
         posit_unpacked<kbits, ebits, fbits> in1, in2;
         in1.template decode<nbits, ebits>(bits_);

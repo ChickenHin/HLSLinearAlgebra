@@ -117,32 +117,6 @@ namespace linalgHLS
             return result;
         }
 
-        // Scalar multiplication
-        // template <typename S> //, typename = std::enable_if_t<std::is_arithmetic_v<S>>>
-        Mat operator*(float scalar) const
-        {
-            Mat result;
-        mat_fmult_loop_r:
-            for (int r = 0; r < _rows; r++)
-            mat_fmult_loop_c:
-                for (int c = 0; c < _cols; c++)
-                    result.data[r][c] = data[r][c] * Type(scalar);
-            return result;
-        }
-
-        // Scalar division
-        // template <typename S> //, typename = std::enable_if_t<std::is_arithmetic_v<S>>>
-        Mat operator/(float scalar) const
-        {
-            Mat result;
-        mat_fdiv_loop_r:
-            for (int r = 0; r < _rows; r++)
-            mat_fdev_loop_c:
-                for (int c = 0; c < _cols; c++)
-                    result.data[r][c] = data[r][c] / Type(scalar);
-            return result;
-        }
-
         template <typename OutType, typename InType>
         OutType conv(const Mat<InType, _rows, _cols> &rhs) const
         {
@@ -218,10 +192,34 @@ namespace linalgHLS
         Type data[_rows][_cols];
     };
 
-    template <typename T, int R, int C>
-    Mat<T, R, C> operator*(float s, const Mat<T, R, C> &m)
+    template <typename Type, int rows, int cols>
+    Mat<Type, rows, cols> operator*(const Mat<Type, rows, cols> &m, Type s)
+    {
+        Mat<Type, rows, cols> result;
+    mat_fmult_loop_r:
+        for (int r = 0; r < rows; r++)
+        mat_fmult_loop_c:
+            for (int c = 0; c < cols; c++)
+                result(r, c) = m(r, c) * s;
+        return result;
+    }
+
+    template <typename Type, int rows, int cols>
+    Mat<Type, rows, cols> operator*(Type s, const Mat<Type, rows, cols> &m)
     {
         return m * s;
+    }
+
+    template <typename Type, int rows, int cols>
+    Mat<Type, rows, cols> operator/(const Mat<Type, rows, cols> &m, Type s)
+    {
+        Mat<Type, rows, cols> result;
+    mat_fdiv_loop_r:
+        for (int r = 0; r < rows; r++)
+        mat_fdiv_loop_c:
+            for (int c = 0; c < cols; c++)
+                result(r, c) = m(r, c) / s;
+        return result;
     }
 
     //============================================================
