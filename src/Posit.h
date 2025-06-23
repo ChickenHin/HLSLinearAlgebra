@@ -49,39 +49,31 @@ public:
         bool reg_bit;
         int reg_len;
 
-        if (is_zero == 1)
+        // check if zero
+        if (frac == 0)
         {
             bits[nbits - 1] = 0;
+            reg_len = nbits-1;
             reg_bit = 0;
-            reg_len = nbits - 1;
-        }
-        else if (is_inf == 1)
-        {
-            bits[nbits - 1] = 1;
-            reg_bit = 0;
-            reg_len = nbits - 1;
         }
         else
         {
-            reg_bit = k >= 0 ? 0 : 1;
             reg_len = k >= 0 ? int(k + 1) : int(-k);
 
-            if(reg_len > nbits - 1)
+            // check if zero or inf
+            if(reg_len >= nbits - 1)
             {
+                bits[nbits - 1] = k >= 0 ? 1 : 0;
                 reg_bit = 0;
-                if(k > 0)
-                    bits[nbits - 1] = 1;
-                else
-                    bits[nbits - 1] = 0;
             }
             else
             {
-                reg_bit = k >= 0 ? 0 : 1;
                 bits[nbits - 1] = sign;
+                reg_bit = k >= 0 ? 0 : 1;
             }
-
-            reg_len = hls::min(nbits - 1, reg_len);
         }
+
+        reg_len = hls::min(nbits - 1, reg_len);
 
         int reg_start = nbits - 2;
 
@@ -125,14 +117,21 @@ public:
         int e_counter = 0;
         int f_counter = 0;
 
-        // start as zero or inf depending on first bit
-        is_zero = !bits[nbits - 1];
-        is_inf = bits[nbits - 1];
-
         sign = bits[nbits - 1];
-        k = 0;
-        exp = 0;
-        frac = 0.0;
+        // start as zero or inf depending on first bit
+        if (bits[nbits - 1])
+        {
+            // for inf, start k as a large number
+            k = nbits;
+            exp = 0;
+            frac = 1.0;
+        }
+        else
+        {
+            k = 0;
+            exp = 0;
+            frac = 0.0;
+        }
 
         enum states
         {
@@ -165,10 +164,6 @@ public:
             {
                 // unpacked.exp[es - 1 - counter] = bits[bit];
                 exp[bit - (nbits - 2 - lenght - es)] = bits[bit];
-
-                // if we reach this state, the number is not zero nor infinite
-                is_inf = 0;
-                is_zero = 0;
 
                 e_counter++;
                 if (e_counter >= es)
@@ -364,16 +359,12 @@ public:
         }
     }
 
-    bool is_zero;
-    bool is_inf;
     bool sign;
     // the max amount of bits for r is nbits-1 bits, nbits-2 bits beeing 0 (or 1), and the last beeing 1 (or 0)
     // k is the amount of counted bits
     // which can be stored in log2(nbits - 2) bits
-    //ap_int<kbits> k;
-    //ap_int<ebits + 1> exp;
     int k;
-    int exp;
+    ap_int<ebits + 1> exp;
     // the max amount of bits for frac is nbits - 1 (sign) - 2 (min bits for k) - es;
     ap_ufixed<fbits, 1> frac;
 };
@@ -381,8 +372,6 @@ public:
 template <int kbits, int ebits, int fbits>
 posit_unpacked<kbits, ebits, fbits> posit_adder(const posit_unpacked<kbits, ebits, fbits> &in1, const posit_unpacked<kbits, ebits, fbits> &in2)
 {
-    bool is_inf = in1.is_inf || in2.is_inf;
-
     int exp1 = in1.getTotalExp();
     int exp2 = in2.getTotalExp();
 
@@ -427,12 +416,6 @@ posit_unpacked<kbits, ebits, fbits> posit_adder(const posit_unpacked<kbits, ebit
 
     // do addition
     ap_fixed<fbits + 4, 3> frac = frac1 + frac2;
-
-    bool is_zero;
-    if (!is_inf && frac == 0)
-        is_zero = 1;
-    else
-        is_zero = 0;
 
     // get sign and remove sign from frac
     bool sign;
@@ -490,8 +473,6 @@ posit_unpacked<kbits, ebits, fbits> posit_adder(const posit_unpacked<kbits, ebit
 
     out.sign = sign;
     out.frac = rfrac;
-    out.is_inf = is_inf;
-    out.is_zero = is_zero;
 
     return out;
 }
@@ -504,32 +485,10 @@ posit_unpacked<kbits, ebits, fbits> posit_mult(const posit_unpacked<kbits, ebits
     unsigned int exp;
     ap_ufixed<fbits * 2, 2> frac;
 
-    bool is_inf = in1.is_inf || in2.is_inf;
-    bool is_zero;
-    if (is_inf)
-    {
-        is_zero = 0;
-        sign = 0;
-        k = 0;
-        exp = 0;
-        frac = 0;
-    }
-    else if (in1.is_zero || in2.is_zero)
-    {
-        is_zero = 1;
-        sign = 0;
-        k = 0;
-        exp = 0;
-        frac = 0;
-    }
-    else
-    {
-        is_zero = 0;
-        sign = in1.sign ^ in2.sign;
-        k = in1.k + in2.k;
-        exp = in1.exp + in2.exp;
-        frac = in1.frac * in2.frac;
-    }
+    sign = in1.sign ^ in2.sign;
+    k = in1.k + in2.k;
+    exp = in1.exp + in2.exp;
+    frac = in1.frac * in2.frac;
 
     // normalize fraction
     if (frac >= 2)
@@ -575,8 +534,6 @@ posit_unpacked<kbits, ebits, fbits> posit_mult(const posit_unpacked<kbits, ebits
     out.k = k;
     out.exp = exp;
     out.frac = rfrac;
-    out.is_zero = is_zero;
-    out.is_inf = is_inf;
 
     return out;
 }
@@ -584,33 +541,13 @@ posit_unpacked<kbits, ebits, fbits> posit_mult(const posit_unpacked<kbits, ebits
 template <int kbits, int ebits, int fbits>
 posit_unpacked<kbits, ebits, fbits> posit_div(const posit_unpacked<kbits, ebits, fbits> &in1, const posit_unpacked<kbits, ebits, fbits> &in2)
 {
-    bool is_inf = in1.is_inf || in2.is_inf;
-    bool is_zero;
     bool sign;
     int k;
     int exp;
     ap_ufixed<fbits * 2, 2> frac;
 
-    if (is_inf)
+    if (in2.frac == 0)
     {
-        is_zero = 0;
-        sign = 0;
-        k = 0;
-        exp = 0;
-        frac = 0;
-    }
-    else if (in2.is_zero == 1)
-    {
-        is_inf = 1;
-        is_zero = 0;
-        sign = 0;
-        k = 0;
-        exp = 0;
-        frac = 0;
-    }
-    else if (in1.is_zero == 1)
-    {
-        is_zero = 1;
         sign = 0;
         k = 0;
         exp = 0;
@@ -618,7 +555,6 @@ posit_unpacked<kbits, ebits, fbits> posit_div(const posit_unpacked<kbits, ebits,
     }
     else
     {
-        is_zero = 0;
         sign = in1.sign ^ in2.sign;
         k = in1.k - in2.k;
         exp = in1.exp - in2.exp;
@@ -677,8 +613,6 @@ posit_unpacked<kbits, ebits, fbits> posit_div(const posit_unpacked<kbits, ebits,
     out.k = k;
     out.exp = exp;
     out.frac = rfrac;
-    out.is_zero = is_zero;
-    out.is_inf = is_inf;
 
     return out;
 }
@@ -695,21 +629,6 @@ posit_unpacked<kbits, ebits, fbits> posit_mac(const posit_unpacked<kbits, ebits,
 template <int kbits, int ebits, int fbits>
 bool posit_equal(const posit_unpacked<kbits, ebits, fbits> &in1, const posit_unpacked<kbits, ebits, fbits> &in2)
 {
-    if (in1.is_zero && in2.is_zero)
-    {
-        return true;
-    }
-
-    if (in1.is_inf && in2.is_inf)
-    {
-        return true;
-    }
-
-    if (in1.is_zero || in2.is_zero)
-    {
-        return false;
-    }
-
     if (in1.sign != in2.sign)
     {
         return false;
@@ -736,29 +655,14 @@ bool posit_equal(const posit_unpacked<kbits, ebits, fbits> &in1, const posit_unp
 template <int kbits, int ebits, int fbits>
 bool posit_lessthan(const posit_unpacked<kbits, ebits, fbits> &in1, const posit_unpacked<kbits, ebits, fbits> &in2)
 {
-    if (in1.is_zero && in2.is_zero)
-    {
-        return false;
-    }
-
-    if (in1.is_inf && in2.is_inf)
-    {
-        return false;
-    }
-
-    if (in1.is_zero && !in2.is_zero)
-    {
-        return !in2.sign;
-    }
-
-    if (in2.is_zero && !in1.is_zero)
-    {
-        return in1.sign;
-    }
-
     if (in1.sign != in2.sign)
     {
         return in1.sign;
+    }
+
+    if(in1.frac == 0 || in2.frac == 0)
+    {
+        return in1.sign != (in1.frac < in2.frac);
     }
 
     if (in1.k != in2.k)
@@ -802,10 +706,8 @@ posit_unpacked<kbits, ebits, fbits> posit_fabs(const posit_unpacked<kbits, ebits
 {
     posit_unpacked<kbits, ebits, fbits> result = in1;
 
-    if (!result.is_zero && !result.is_inf)
-    {
-        result.sign = 0; // set sign to 0
-    }
+    result.sign = 0; // set sign to 0
+
     return result;
 }
 
@@ -838,11 +740,6 @@ posit_unpacked<kbits, ebits, fbits> posit_floor(const posit_unpacked<kbits, ebit
     posit_unpacked<kbits, ebits, fbits> result;
 
     result.sign = in1.sign;
-    if (frac == 0)
-        result.is_zero = 1;
-    else
-        result.is_zero = 0;
-    result.is_inf = in1.is_inf;
     result.frac = frac;
     result.setKEFromTotalExp(exp);
     return result;
@@ -877,11 +774,6 @@ posit_unpacked<kbits, ebits, fbits> posit_round(const posit_unpacked<kbits, ebit
     posit_unpacked<kbits, ebits, fbits> result;
 
     result.sign = in1.sign;
-    if (frac == 0)
-        result.is_zero = 1;
-    else
-        result.is_zero = 0;
-    result.is_inf = in1.is_inf;
     result.frac = frac;
     result.setKEFromTotalExp(exp);
     return result;
@@ -916,11 +808,6 @@ posit_unpacked<kbits, ebits, fbits> posit_ceil(const posit_unpacked<kbits, ebits
     posit_unpacked<kbits, ebits, fbits> result;
 
     result.sign = in1.sign;
-    if (frac == 0)
-        result.is_zero = 1;
-    else
-        result.is_zero = 0;
-    result.is_inf = in1.is_inf;
     result.frac = frac;
     result.setKEFromTotalExp(exp);
     return result;
@@ -961,9 +848,7 @@ public:
     {
         // #pragma HLS INLINE
 
-        bool is_zero = (c == 0);
         bool psign = c < 0;
-        bool is_inf = 0;
 
         // mantissa is just zeros
         ap_ufixed<fbits * 2, fbits> pmantissa;
@@ -992,8 +877,6 @@ public:
 
         unpacked.sign = psign;
         unpacked.frac = pmantissa;
-        unpacked.is_zero = is_zero;
-        unpacked.is_inf = is_inf;
 
         bits_ = unpacked.template encode<nbits, ebits>();
     }
@@ -1002,9 +885,7 @@ public:
     {
         // #pragma HLS INLINE
 
-        bool is_zero = (c == 0);
         bool psign = c < 0;
-        bool is_inf = 0;
 
         // mantissa is just zeros
         ap_ufixed<fbits * 2, fbits> pmantissa;
@@ -1033,8 +914,6 @@ public:
 
         unpacked.sign = psign;
         unpacked.frac = pmantissa;
-        unpacked.is_zero = is_zero;
-        unpacked.is_inf = is_inf;
 
         bits_ = unpacked.template encode<nbits, ebits>();
     }
@@ -1047,9 +926,6 @@ public:
         // unsigned int* bitsPtr = (unsigned int*)&c;
         // unsigned int bits = *bitsPtr; // Dereference to get the raw bits
 
-        bool is_zero;
-        bool is_inf;
-
         bool fsign;
         // ap_int<12> fexponent;
         int fexponent;
@@ -1058,24 +934,19 @@ public:
 
         if (c == 0.0 || c == -0.0)
         {
-            is_zero = 1;
-            is_inf = 0;
             fsign = 0;
             fexponent = 0;
             fmantissa = 0;
         }
-        else if (c == std::numeric_limits<double>::infinity() || c == -std::numeric_limits<double>::infinity())
+        else if (c == std::numeric_limits<float>::infinity() || c == -std::numeric_limits<float>::infinity())
         {
-            is_zero = 0;
-            is_inf = 1;
             fsign = 0;
-            fexponent = 0;
-            fmantissa = 0;
+            // TODO this should be larger than what is representable using nbits
+            fexponent = nbits;
+            fmantissa = 1.0;
         }
         else
         {
-            is_zero = 0;
-            is_inf = 0;
             fsign = bits[31];
             fexponent = bits(30, 23) - 127; // remove bias from floating point exponent
             fmantissa[23] = 1;
@@ -1094,8 +965,6 @@ public:
 
         unpacked.sign = psign;
         unpacked.frac = pmantissa;
-        unpacked.is_zero = is_zero;
-        unpacked.is_inf = is_inf;
 
         bits_ = unpacked.template encode<nbits, ebits>();
     }
@@ -1108,9 +977,6 @@ public:
         // unsigned int* bitsPtr = (unsigned int*)&c;
         // unsigned int bits = *bitsPtr; // Dereference to get the raw bits
 
-        bool is_zero;
-        bool is_inf;
-
         bool fsign;
         // ap_int<12> fexponent;
         int fexponent;
@@ -1119,24 +985,19 @@ public:
 
         if (c == 0.0 || c == -0.0)
         {
-            is_zero = 1;
-            is_inf = 0;
             fsign = 0;
             fexponent = 0;
             fmantissa = 0;
         }
         else if (c == std::numeric_limits<double>::infinity() || c == -std::numeric_limits<double>::infinity())
         {
-            is_zero = 0;
-            is_inf = 1;
             fsign = 0;
-            fexponent = 0;
-            fmantissa = 0;
+            // TODO this should be larger than what is representable using nbits
+            fexponent = nbits;
+            fmantissa = 1.0;
         }
         else
         {
-            is_zero = 0;
-            is_inf = 0;
             fsign = bits[63];
             fexponent = bits(62, 52) - 1023; // remove bias from floating point exponent
             fmantissa[52] = 1;
@@ -1172,8 +1033,6 @@ public:
 
         unpacked.sign = psign;
         unpacked.frac = pmantissa;
-        unpacked.is_zero = is_zero;
-        unpacked.is_inf = is_inf;
 
         bits_ = unpacked.template encode<nbits, ebits>();
     }
@@ -1188,7 +1047,7 @@ public:
 
         ap_ufixed<fnbits - fibits + 1, 1> fmantissa;
 
-        if (c == 0.0f)
+        if (c == 0.0)
             fmantissa[fnbits - fibits] = 0;
         else
             fmantissa[fnbits - fibits] = 1;
@@ -1206,8 +1065,6 @@ public:
 
         unpacked.sign = psign;
         unpacked.frac = pmantissa;
-        unpacked.is_zero = (c == 0.0f);
-        unpacked.is_inf = (c == std::numeric_limits<float>::infinity() || c == -std::numeric_limits<float>::infinity());
 
         bits_ = unpacked.encode();
     }
@@ -1219,20 +1076,13 @@ public:
         posit_unpacked<kbits, ebits, fbits> unpacked;
         unpacked.template decode<nbits, ebits>(bits_);
 
-        if (unpacked.is_zero)
+        int exp = unpacked.getTotalExp();
+        int res = ap_ufixed<fbits * 2, fbits>(unpacked.frac) << exp;
+        if (unpacked.sign)
         {
-            return 0;
+            res = -res;
         }
-        else
-        {
-            int exp = unpacked.getTotalExp();
-            int res = ap_ufixed<fbits * 2, fbits>(unpacked.frac) << exp;
-            if (unpacked.sign)
-            {
-                res = -res;
-            }
-            return res;
-        }
+        return res;
     }
 
     operator unsigned int() const
@@ -1242,16 +1092,9 @@ public:
         posit_unpacked<kbits, ebits, fbits> unpacked;
         unpacked.template decode<nbits, ebits>(bits_);
 
-        if (unpacked.is_zero)
-        {
-            return 0;
-        }
-        else
-        {
-            int exp = unpacked.getTotalExp();
-            int res = ap_fixed<fbits * 2, fbits>(unpacked.frac) << exp;
-            return res;
-        }
+        int exp = unpacked.getTotalExp();
+        int res = ap_fixed<fbits * 2, fbits>(unpacked.frac) << exp;
+        return res;
     }
 
     operator float() const
@@ -1263,12 +1106,7 @@ public:
 
         ap_uint<32> bits;
 
-        if (unpacked.is_zero)
-        {
-            return double(0.0);
-        }
-
-        if (unpacked.is_inf)
+        if (unpacked.k >= nbits)
         {
             return std::numeric_limits<double>::infinity();
         }
@@ -1307,12 +1145,7 @@ public:
 
         ap_uint<64> bits;
 
-        if (unpacked.is_zero)
-        {
-            return double(0.0);
-        }
-
-        if (unpacked.is_inf)
+        if (unpacked.k >= nbits)
         {
             return std::numeric_limits<double>::infinity();
         }
@@ -1372,8 +1205,7 @@ public:
 
         in1.template decode<nbits, ebits>(bits_);
 
-        if (!in1.is_zero)
-            in1.sign = !in1.sign;
+        in1.sign = !in1.sign;
 
         Posit result;
         result.bits_ = in1.template encode<nbits, ebits>();
@@ -1401,8 +1233,7 @@ public:
         in1.template decode<nbits, ebits>(bits_);
         in2.template decode<nbits, ebits>(rhs.bits_);
 
-        if (!in2.is_zero)
-            in2.sign = !in2.sign;
+        in2.sign = !in2.sign;
 
         posit_unpacked<kbits, ebits, fbits> out = posit_adder(in1, in2);
 
@@ -1509,8 +1340,7 @@ public:
         in1.template decode<nbits, ebits>(bits_);
         in2.template decode<nbits, ebits>(rhs.bits_);
 
-        if (!in2.is_zero)
-            in2.sign = !in2.sign;
+        in2.sign = !in2.sign;
 
         posit_unpacked<kbits, ebits, fbits> out = posit_adder(in1, in2);
 

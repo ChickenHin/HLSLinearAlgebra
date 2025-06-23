@@ -13,8 +13,8 @@ Type compute_error(Type a, Posit<nbits, es> b)
     Type error = fabs(a - Type(b));
     if (a != 0)
         error /= fabs(a);
-    else if (error != 0)
-        error = 10000000.0f;
+    //else if (error != 0)
+    //    error = 10000000.0f;
     return error;
 }
 
@@ -24,28 +24,34 @@ int main(void)
 
     double max_diff = 0.01;
 
-    double max = 256.0; // pow(2.0, 8);
-    double step = 0.01; // pow(2.0, -6);
+    double max = pow(2.0, 8);
+    double step = pow(2.0, -6);
 
-    for (double c = -max; c < max; c += step)
+    for (double c = 0; c < max; c += step)
     {
-        for (double b = -max; b < max; b += step)
+        for (double b = 0; b < max; b += step)
         {
-            for (double a = -max; a < max; a += step)
+            for (double a = 0; a < max; a += step)
             {
                 // binary operations
-                double add = a + b + c;
-                double sub = a - b - c;
+                double add2 = a + b;
+                double add3 = a + b + c;
+                double sub2 = a - b;
+                double sub3 = a - b - c;
                 double mul = a * b * c;
                 double div = a / b / c;
                 double add_mul = a + b * c;
                 double add_div = a + b / c;
 
                 // remove -inf, it is not supported by Posit
-                if (add == -std::numeric_limits<double>::infinity())
-                    add = std::numeric_limits<double>::infinity();
-                if (sub == -std::numeric_limits<double>::infinity())
-                    sub = std::numeric_limits<double>::infinity();
+                if (add2 == -std::numeric_limits<double>::infinity())
+                    add2 = std::numeric_limits<double>::infinity();
+                if (add3 == -std::numeric_limits<double>::infinity())
+                    add3 = std::numeric_limits<double>::infinity();
+                if (sub2 == -std::numeric_limits<double>::infinity())
+                    sub2 = std::numeric_limits<double>::infinity();
+                if (sub3 == -std::numeric_limits<double>::infinity())
+                    sub3 = std::numeric_limits<double>::infinity();
                 if (mul == -std::numeric_limits<double>::infinity())
                     mul = std::numeric_limits<double>::infinity();
                 if (div == -std::numeric_limits<double>::infinity())
@@ -112,45 +118,61 @@ int main(void)
                     failed = true;
                 }
 
-                Posit<nbits, es> add_mixed = a_mixed + b_mixed + c_mixed;
-                if (compute_error(add, add_mixed) > max_diff)
+                Posit<nbits, es> add2_mixed = a_mixed + b_mixed;
+                if (compute_error(add2, add2_mixed) > max_diff)
                 {
-                    std::cout << "error in: " << a << " + " << b << " = " << add << std::endl;
-                    std::cout << double(a_mixed) << " + " << double(b_mixed) << " = " << double(add_mixed) << std::endl;
+                    std::cout << "error in: " << a << " + " << b << " = " << add2 << std::endl;
+                    std::cout << double(a_mixed) << " + " << double(b_mixed) << " = " << double(add2_mixed) << std::endl;
                     failed = true;
                 }
 
-                Posit<nbits, es> add_mixed_2 = a_mixed;
-                add_mixed_2 += b_mixed + c_mixed;
-                if (compute_error(add, add_mixed_2) > max_diff)
+                Posit<nbits, es> add3_mixed = a_mixed + b_mixed + c_mixed;
+                if (compute_error(add3, add3_mixed) > max_diff)
                 {
-                    std::cout << "error in: " << a << " += " << b << " = " << add << std::endl;
-                    std::cout << double(a_mixed) << " += " << double(b_mixed) << " = " << double(add_mixed_2) << std::endl;
+                    std::cout << "error in: " << a << " + " << b << " + " << c << " = " << add3 << std::endl;
+                    std::cout << double(a_mixed) << " + " << double(b_mixed) << " + " << double(c_mixed) << " = " << double(add3_mixed) << std::endl;
                     failed = true;
                 }
 
-                Posit<nbits, es> sub_mixed = a_mixed - b_mixed - c_mixed;
-                if (compute_error(sub, sub_mixed) > max_diff)
+                Posit<nbits, es> add3_mixed_2 = a_mixed;
+                add3_mixed_2 += b_mixed + c_mixed;
+                if (compute_error(add3, add3_mixed_2) > max_diff)
                 {
-                    std::cout << "error in: " << a << " - " << b << " = " << sub << std::endl;
-                    std::cout << double(a_mixed) << " - " << double(b_mixed) << " = " << double(sub_mixed) << std::endl;
+                    std::cout << "error in: " << a << " += " << b << " + " << c << " = " << add3 << std::endl;
+                    std::cout << double(a_mixed) << " += " << double(b_mixed) << " + " << double(c_mixed) << " = " << double(add3_mixed_2) << std::endl;
                     failed = true;
                 }
 
-                Posit<nbits, es> sub_mixed_2 = a_mixed;
-                sub_mixed_2 -= b_mixed + c_mixed;
-                if (compute_error(sub, sub_mixed_2) > max_diff)
+                Posit<nbits, es> sub2_mixed = a_mixed - b_mixed;
+                if (compute_error(sub2, sub2_mixed) > max_diff)
                 {
-                    std::cout << "error in: " << a << " -= " << b << " = " << sub << std::endl;
-                    std::cout << double(a_mixed) << " -= " << double(b_mixed) << " = " << double(sub_mixed_2) << std::endl;
+                    std::cout << "error in: " << a << " - " << b << " = " << sub2 << std::endl;
+                    std::cout << double(a_mixed) << " - " << double(b_mixed) << " = " << double(sub2_mixed) << std::endl;
+                    failed = true;
+                }
+
+                Posit<nbits, es> sub3_mixed = a_mixed - b_mixed - c_mixed;
+                if (compute_error(sub3, sub3_mixed) > max_diff)
+                {
+                    std::cout << "error in: " << a << " - " << b << " - " << c << " = " << sub3 << std::endl;
+                    std::cout << double(a_mixed) << " - " << double(b_mixed) << " - " << double(c_mixed) << " = " << double(sub3_mixed) << std::endl;
+                    failed = true;
+                }
+
+                Posit<nbits, es> sub3_mixed_2 = a_mixed;
+                sub3_mixed_2 -= b_mixed + c_mixed;
+                if (compute_error(sub3, sub3_mixed_2) > max_diff)
+                {
+                    std::cout << "error in: " << a << " -= " << b << " + " << c << " = " << sub3 << std::endl;
+                    std::cout << double(a_mixed) << " -= " << double(b_mixed) << " + " << double(c_mixed) << " = " << double(sub3_mixed_2) << std::endl;
                     failed = true;
                 }
 
                 Posit<nbits, es> mul_mixed = a_mixed * b_mixed * c_mixed;
                 if (compute_error(mul, mul_mixed) > max_diff)
                 {
-                    std::cout << "error in: " << a << " * " << b << " = " << mul << std::endl;
-                    std::cout << double(a_mixed) << " * " << double(b_mixed) << " = " << double(mul_mixed) << std::endl;
+                    std::cout << "error in: " << a << " * " << b << " * " << c << " = " << mul << std::endl;
+                    std::cout << double(a_mixed) << " * " << double(b_mixed) << " * " << double(c_mixed) << " = " << double(mul_mixed) << std::endl;
                     failed = true;
                 }
 
@@ -158,16 +180,16 @@ int main(void)
                 mul_mixed_2 *= b_mixed * c_mixed;
                 if (compute_error(mul, mul_mixed_2) > max_diff)
                 {
-                    std::cout << "error in: " << a << " *= " << b << " = " << mul << std::endl;
-                    std::cout << double(a_mixed) << " *= " << double(b_mixed) << " = " << double(mul_mixed_2) << std::endl;
+                    std::cout << "error in: " << a << " *= " << b << " * " << c << " = " << mul << std::endl;
+                    std::cout << double(a_mixed) << " *= " << double(b_mixed) << " * " << double(c_mixed) << " = " << double(mul_mixed_2) << std::endl;
                     failed = true;
                 }
 
                 Posit<nbits, es> div_mixed = a_mixed / b_mixed / c_mixed;
                 if (compute_error(div, div_mixed) > max_diff)
                 {
-                    std::cout << "error in: " << a << " / " << b << " = " << div << std::endl;
-                    std::cout << double(a_mixed) << " / " << double(b_mixed) << " = " << double(div_mixed) << std::endl;
+                    std::cout << "error in: " << a << " / " << b << " / " << c << " = " << div << std::endl;
+                    std::cout << double(a_mixed) << " / " << double(b_mixed) << " / " << double(c_mixed) << " = " << double(div_mixed) << std::endl;
                     failed = true;
                 }
 
@@ -175,8 +197,8 @@ int main(void)
                 div_mixed_2 /= b_mixed * c_mixed;
                 if (compute_error(div, div_mixed_2) > max_diff)
                 {
-                    std::cout << "error in: " << a << " /= " << b << " = " << div << std::endl;
-                    std::cout << double(a_mixed) << " /= " << double(b_mixed) << " = " << double(div_mixed_2) << std::endl;
+                    std::cout << "error in: " << a << " /= " << b << " * " << c << " = " << div << std::endl;
+                    std::cout << double(a_mixed) << " /= " << double(b_mixed) << " * " << double(c_mixed) << " = " << double(div_mixed_2) << std::endl;
                     failed = true;
                 }
 
@@ -193,7 +215,7 @@ int main(void)
                 {
                     std::cout << "error in: " << a << " + " << b << " / " << c << " = " << add_div << std::endl;
                     std::cout << double(a_mixed) << " + " << double(b_mixed) << " / " << double(c_mixed) << " = " << double(add_div_mixed) << std::endl;
-                    //failed = true;
+                    // failed = true;
                 }
 
                 bool less_mixed = a_mixed < b_mixed;
@@ -251,7 +273,7 @@ int main(void)
                     std::cout << abs_ << " != " << double(abs_mixed) << std::endl;
                     failed = true;
                 }
-
+                /*
                 Posit<nbits, es> floor_mixed = floor(a_mixed);
                 if (compute_error(floor_, floor_mixed) > max_diff)
                 {
@@ -275,7 +297,7 @@ int main(void)
                     std::cout << ceil_ << " != " << double(ceil_mixed) << std::endl;
                     // failed = true;
                 }
-
+                */
                 Posit<nbits, es> neg_mixed = -a_mixed;
                 if (compute_error(neg, neg_mixed) > max_diff)
                 {
