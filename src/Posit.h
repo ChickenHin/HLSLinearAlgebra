@@ -53,7 +53,7 @@ public:
         if (frac == 0)
         {
             bits[nbits - 1] = 0;
-            reg_len = nbits-1;
+            reg_len = nbits - 1;
             reg_bit = 0;
         }
         else
@@ -61,7 +61,7 @@ public:
             reg_len = k >= 0 ? int(k + 1) : int(-k);
 
             // check if zero or inf
-            if(reg_len >= nbits - 1)
+            if (reg_len >= nbits - 1)
             {
                 bits[nbits - 1] = k >= 0 ? 1 : 0;
                 reg_bit = 0;
@@ -122,7 +122,7 @@ public:
         if (bits[nbits - 1])
         {
             // for inf, start k as a large number
-            k = nbits;
+            k = large_k;
             exp = 0;
             frac = 1.0;
         }
@@ -367,6 +367,8 @@ public:
     ap_int<ebits + 1> exp;
     // the max amount of bits for frac is nbits - 1 (sign) - 2 (min bits for k) - es;
     ap_ufixed<fbits, 1> frac;
+
+    static constexpr int large_k = kbits + ebits + fbits;
 };
 
 template <int kbits, int ebits, int fbits>
@@ -546,10 +548,11 @@ posit_unpacked<kbits, ebits, fbits> posit_div(const posit_unpacked<kbits, ebits,
     int exp;
     ap_ufixed<fbits * 2, 2> frac;
 
+    // set inf
     if (in2.frac == 0)
     {
         sign = 0;
-        k = 0;
+        k = in1.large_k;
         exp = 0;
         frac = 0;
     }
@@ -660,7 +663,7 @@ bool posit_lessthan(const posit_unpacked<kbits, ebits, fbits> &in1, const posit_
         return in1.sign;
     }
 
-    if(in1.frac == 0 || in2.frac == 0)
+    if (in1.frac == 0 || in2.frac == 0)
     {
         return in1.sign != (in1.frac < in2.frac);
     }

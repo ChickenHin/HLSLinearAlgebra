@@ -29,9 +29,9 @@ int main(void)
 
     for (double c = 0; c < max; c += step)
     {
-        for (double b = 0; b < max; b += step)
+        for (double b = -max; b < max; b += step)
         {
-            for (double a = 0; a < max; a += step)
+            for (double a = -max; a < max; a += step)
             {
                 // binary operations
                 double add2 = a + b;
