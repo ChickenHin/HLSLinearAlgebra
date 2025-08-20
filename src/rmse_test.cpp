@@ -8,7 +8,7 @@
 #define float_bits 32
 #define float_es 8
 #define posit_bits 32
-#define posit_es 8
+#define posit_es 3
 
 int main(void)
 {
