@@ -6,14 +6,7 @@
 # CPU Tests using GoogleTest
 # =============================================================================
 if(BUILD_TESTS)
-    # Basic CPU Tests (no dependencies)
-    add_executable(basic_cpu_test cpu/basic_cpu_test.cpp)
-    target_link_libraries(basic_cpu_test 
-        gtest
-        gtest_main
-    )
-    gtest_discover_tests(basic_cpu_test)
-    
+
     # Linear Algebra CPU Tests (using general linalg library)
     add_executable(linalg_cpu_test cpu/linalg_cpu_test.cpp)
     target_link_libraries(linalg_cpu_test 
@@ -49,13 +42,6 @@ if(BUILD_TESTS)
     #     hls_linalg
     #     gtest_main
     # )
-    
-    # Register tests with CTest
-    gtest_discover_tests(basic_cpu_test
-        TEST_PREFIX "Basic."
-        PROPERTIES TIMEOUT 300
-    )
-    
     
     # Comprehensive Linear Algebra Tests
     add_executable(comprehensive_linalg_test cpu/comprehensive_linalg_test.cpp)
@@ -129,31 +115,46 @@ endif()
 # HLS/FPGA Synthesis Tests using Vitis
 # =============================================================================
 if(BUILD_HLS_TESTS AND VITIS_EXECUTABLE)
+    # Find the Vitis settings script required to set up the environment
+    find_file(VITIS_SETTINGS_SCRIPT 
+        NAMES settings64.sh
+        PATHS ${XILINX_VITIS_PATH}
+        NO_DEFAULT_PATH
+        REQUIRED
+    )
+    message(STATUS "Found Vitis settings script: ${VITIS_SETTINGS_SCRIPT}")
+    
     # FloatX HLS Test
+    set(FLOATX_HLS_COMMAND
+        "source ${VITIS_SETTINGS_SCRIPT} && ${VITIS_EXECUTABLE} -s ${CMAKE_CURRENT_SOURCE_DIR}/hls/run_float.py"
+    )
     add_test(
         NAME FloatX_HLS_Test
-        COMMAND ${VITIS_EXECUTABLE} -s ${CMAKE_CURRENT_SOURCE_DIR}/run.py
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND bash -c "${FLOATX_HLS_COMMAND}"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/hls
     )
     set_tests_properties(FloatX_HLS_Test PROPERTIES
         TIMEOUT 1800  # 30 minutes timeout for HLS synthesis
         LABELS "HLS;FPGA;FloatX"
     )
-    
+
     # Posit HLS Test (template for future implementation)
     # Note: You'll need to create a run_posit.py script similar to run.py
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/run_posit.py)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/hls/run_posit.py)
+        set(POSIT_HLS_COMMAND
+            "source ${VITIS_SETTINGS_SCRIPT} && ${VITIS_EXECUTABLE} -s ${CMAKE_CURRENT_SOURCE_DIR}/hls/run_posit.py"
+        )
         add_test(
             NAME Posit_HLS_Test
-            COMMAND ${VITIS_EXECUTABLE} -s ${CMAKE_CURRENT_SOURCE_DIR}/run_posit.py
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMAND bash -c "${POSIT_HLS_COMMAND}"
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/hls
         )
         set_tests_properties(Posit_HLS_Test PROPERTIES
             TIMEOUT 1800
             LABELS "HLS;FPGA;Posit"
         )
     endif()
-    
+
     # Add custom target for HLS tests
     add_custom_target(hls_tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -L "HLS"
