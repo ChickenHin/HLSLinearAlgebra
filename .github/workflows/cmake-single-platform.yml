@@ -15,11 +15,11 @@ env:
 jobs:
   build-and-test:
     runs-on: ubuntu-22.04
-    container:
+    #container:
       # image: ghcr.io/nosemeocurreapodo/mesh_vo:latest  # <-- Prebuilt environment
       # image: ghcr.io/nosemeocurreapodo/docker-challenges-dev:latest
-      image: docker.io/bcc003ce2b6d/vivado_2023.2:v1
-      options: --user root
+      # image: docker.io/bcc003ce2b6d/vivado_2023.2:v1
+      # options: --user root
 
     steps:
     - uses: actions/checkout@v4
