@@ -79,10 +79,22 @@ if(BUILD_TESTS)
         PROPERTIES TIMEOUT 300
     )
     
+    # Utility Tests (Shift Registers, Solvers, etc.)
+    add_executable(utility_test cpu/utility_test.cpp)
+    target_link_libraries(utility_test 
+        gtest
+        gtest_main
+        linalg
+    )
+    gtest_discover_tests(utility_test
+        TEST_PREFIX "Utility."
+        PROPERTIES TIMEOUT 300
+    )
+    
     # Create a custom target to run all CPU tests
     add_custom_target(run_cpu_tests
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -R "Basic|CPU|Comprehensive|Precision"
-        DEPENDS basic_cpu_test linalg_cpu_test comprehensive_linalg_test comprehensive_linalg_test2 numerical_precision_test
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -R "Basic|CPU|Comprehensive|Precision|Utility"
+        DEPENDS linalg_cpu_test comprehensive_linalg_test comprehensive_linalg_test2 numerical_precision_test utility_test
         COMMENT "Running all CPU tests"
     )
 endif()

@@ -54,10 +54,10 @@ int main(void)
 
     // Test data
     double test_vectors[][2] = {
+        {1.0e6, 1.0e-6},
         {3.14159, 2.71828},
         {100.0, 0.5},
         {-50.25, 25.125},
-        {1.0e6, 1.0e-6},
         {0.0, 123.456},
         {123.456, 0.0} // Test division by zero
     };

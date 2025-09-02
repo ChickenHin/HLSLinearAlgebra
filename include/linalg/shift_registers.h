@@ -1,6 +1,6 @@
 #pragma once
 
-#include "linalgHLS_old.h"
+#include "linalg/linalg.h"
 
 template <typename type, int size>
 class ShiftRegister
@@ -8,6 +8,13 @@ class ShiftRegister
 public:
     ShiftRegister()
     {
+        HLS_INLINE
+    sr_init_loop:
+        for (int i = 0; i < size; i++)
+        {
+            HLS_UNROLL
+            data[i] = type(0);
+        }
     }
 
     type ShiftDown(type val_in)
@@ -63,7 +70,7 @@ public:
         matrix(0, 2) = line1_val;
     }
 
-    linalgHLS::Mat3<type> GetMat()
+    linalg::Mat3<type> GetMat()
     {
         return matrix;
     }
@@ -71,7 +78,7 @@ public:
 private:
     ShiftRegister<type, size - 3> line1;
     ShiftRegister<type, size - 3> line2;
-    linalgHLS::Mat3<type> matrix;
+    linalg::Mat3<type> matrix;
 };
 
 template <typename type, int size>
@@ -95,12 +102,12 @@ public:
         matrix(0, 1) = line_val;
     }
 
-    linalgHLS::Mat2<type> GetMat()
+    linalg::Mat2<type> GetMat()
     {
         return matrix;
     }
 
 private:
     ShiftRegister<type, size - 2> line;
-    linalgHLS::Mat2<type> matrix;
+    linalg::Mat2<type> matrix;
 };
