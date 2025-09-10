@@ -5,20 +5,20 @@
 
 // HLS pragma macros - only active during synthesis
 #ifdef __SYNTHESIS__
-    #define HLS_PRAGMA(x) _Pragma(#x)
-    #define HLS_INLINE HLS_PRAGMA(HLS INLINE)
-    #define HLS_UNROLL HLS_PRAGMA(HLS UNROLL)
-    #define HLS_PIPELINE HLS_PRAGMA(HLS PIPELINE)
-    #define HLS_ARRAY_PARTITION(var, type, dim) HLS_PRAGMA(HLS ARRAY_PARTITION variable=var type=type dim=dim)
-    #include "hls_math.h"
-    namespace math = hls;
+#define HLS_PRAGMA(x) _Pragma(#x)
+#define HLS_INLINE HLS_PRAGMA(HLS INLINE)
+#define HLS_UNROLL HLS_PRAGMA(HLS UNROLL)
+#define HLS_PIPELINE HLS_PRAGMA(HLS PIPELINE)
+#define HLS_ARRAY_PARTITION(var, type, dim) HLS_PRAGMA(HLS ARRAY_PARTITION variable = var type = type dim = dim)
+#include "hls_math.h"
+namespace math = hls;
 #else
-    #define HLS_PRAGMA(x)
-    #define HLS_INLINE
-    #define HLS_UNROLL
-    #define HLS_PIPELINE
-    #define HLS_ARRAY_PARTITION(var, type, dim)
-    namespace math = std;
+#define HLS_PRAGMA(x)
+#define HLS_INLINE
+#define HLS_UNROLL
+#define HLS_PIPELINE
+#define HLS_ARRAY_PARTITION(var, type, dim)
+namespace math = std;
 #endif
 
 namespace linalg
@@ -36,12 +36,14 @@ namespace linalg
         {
             HLS_INLINE
         mat_init_loop_r:
-            for (int r = 0; r < _rows; r++) {
+            for (int r = 0; r < _rows; r++)
+            {
                 HLS_UNROLL
             mat_init_loop_c:
-                for (int c = 0; c < _cols; c++) {
+                for (int c = 0; c < _cols; c++)
+                {
                     HLS_UNROLL
-                    data[r][c] = Type(0);
+                    get_(r, c) = Type(0);
                 }
             }
         }
@@ -52,7 +54,7 @@ namespace linalg
             for (int r = 0; r < _rows; r++)
             mat_init_loop_c:
                 for (int c = 0; c < _cols; c++)
-                    data[r][c] = _data[r * _cols + c];
+                    get_(r, c) = _data[r * _cols + c];
         }
 
         // Copy constructor
@@ -64,7 +66,13 @@ namespace linalg
             mat_const_other_loop_c:
                 for (int c = 0; c < _cols; c++)
 #pragma HLS UNROLL
-                    data[r][c] = other.data[r][c];
+                    get_(r, c) = other(r, c);
+        }
+
+        operator float() const
+        {
+            assert(_rows == 1 && _cols == 1);
+            return get_(0, 0);
         }
 
         // Assignment operator
@@ -76,7 +84,7 @@ namespace linalg
                 for (int r = 0; r < _rows; r++)
                 mat_assign_loop_c:
                     for (int c = 0; c < _cols; c++)
-                        data[r][c] = other.data[r][c];
+                        get_(r, c) = other(r, c);
             }
             return *this;
         }
@@ -93,7 +101,7 @@ namespace linalg
                 for (int c = 0; c < _cols; c++)
 #pragma HLS UNROLL
 
-                    result.data[r][c] = Type(0);
+                    result(r, c) = Type(0);
             return result;
         }
 
@@ -105,7 +113,7 @@ namespace linalg
         mat_identity_loop_i:
             for (int i = 0; i < _rows; i++)
 #pragma HLS UNROLL
-                result.data[i][i] = Type(1);
+                result(i, i) = Type(1);
             return result;
         }
 
@@ -122,7 +130,7 @@ namespace linalg
             for (int r = 0; r < _rows; r++)
             mat_tran_loop_c:
                 for (int c = 0; c < _cols; c++)
-                    result(c, r) = data[r][c];
+                    result(c, r) = get_(r, c);
             return result;
         }
 
@@ -140,7 +148,7 @@ namespace linalg
                 mat_mult_loop_k:
                     for (int k = 0; k < _cols; k++)
 
-                        result(r, c) += data[r][k] * rhs(k, c);
+                        result(r, c) += get_(r, k) * rhs(k, c);
 
             return result;
         }
@@ -153,7 +161,7 @@ namespace linalg
             for (int r = 0; r < _rows; r++)
             mat_conv_loop_k:
                 for (int k = 0; k < _cols; k++)
-                    result += OutType(data[r][k] * rhs(r, k));
+                    result += OutType(get_(r, k) * rhs(r, k));
 
             return result;
         }
@@ -165,7 +173,7 @@ namespace linalg
             for (int r = 0; r < _rows; r++)
             mat_add_loop_c:
                 for (int c = 0; c < _cols; c++)
-                    result.data[r][c] = data[r][c] + other.data[r][c];
+                    result(r, c) = get_(r, c) + other(r, c);
             return result;
         }
 
@@ -176,7 +184,18 @@ namespace linalg
             for (int r = 0; r < _rows; r++)
             mat_sub_loop_c:
                 for (int c = 0; c < _cols; c++)
-                    result.data[r][c] = data[r][c] - other.data[r][c];
+                    result(r, c) = get_(r, c) - other(r, c);
+            return result;
+        }
+
+        Mat operator-() const
+        {
+            Mat result;
+        mat_neg_loop_r:
+            for (int r = 0; r < _rows; r++)
+            mat_neg_loop_c:
+                for (int c = 0; c < _cols; c++)
+                    result(r, c) = -get_(r, c);
             return result;
         }
 
@@ -188,36 +207,59 @@ namespace linalg
             for (int r = 0; r < _rows; r++)
             mat_norm_loop_c:
                 for (int c = 0; c < _cols; c++)
-                    sum += data[r][c] * data[r][c];
+                    sum += get_(r, c) * get_(r, c);
             return math::sqrt(sum);
         }
 
         // Element accessors (row, col)
         Type &operator()(int r, int c)
         {
-            return data[r][c];
+            return get_(r, c);
         }
 
         Type operator()(int r, int c) const
         {
-            return data[r][c];
+            return get_(r, c);
         }
 
         // For vector-like usage (assumes single column, i.e. col = 0)
         Type &operator()(int r)
         {
             static_assert(_cols == 1, "Single-index operator() only valid for Nx1 matrices (vectors)");
-            return data[r][0];
+            return get_(r, 0);
         }
 
         Type operator()(int r) const
         {
             static_assert(_cols == 1, "Single-index operator() only valid for Nx1 matrices (vectors)");
-            return data[r][0];
+            return get_(r, 0);
+        }
+
+        Type *data()
+        {
+            return data_;
+        }
+
+        const Type *data() const
+        {
+            return data_;
         }
 
     protected:
-        Type data[_rows][_cols];
+        Type &get_(int r, int c)
+        {
+            // return data_[r * _cols + c];
+            return data_[c * _rows + r];
+        }
+
+        Type get_(int r, int c) const
+        {
+            // return data_[r * _cols + c];
+            return data_[c * _rows + r];
+        }
+
+        // Type data_[_rows][_cols];
+        Type data_[_rows * _cols];
         HLS_ARRAY_PARTITION(data, complete, 0)
     };
 
@@ -297,6 +339,13 @@ namespace linalg
             (*this)(0) = x;
             (*this)(1) = y;
             (*this)(2) = z;
+        }
+
+        bool operator==(const Vec3 &other) const
+        {
+            return ((*this)(0) == other(0) &&
+                    (*this)(1) == other(1) &&
+                    (*this)(2) == other(2));
         }
 
         // Cross product
@@ -610,36 +659,43 @@ namespace linalg
             // fromQuaternion(q.w_, q.x_, q.y_, q.z_);
             quaternion_ = q;
         }
-        
+
         // Constructor from rotation matrix (converts to quaternion)
         SO3(const Mat3<Type> &R)
         {
             // Convert rotation matrix to quaternion using Shepperd's method
-            Type trace = R(0,0) + R(1,1) + R(2,2);
-            
-            if (trace > Type(0)) {
+            Type trace = R(0, 0) + R(1, 1) + R(2, 2);
+
+            if (trace > Type(0))
+            {
                 Type s = math::sqrt(trace + Type(1)) * Type(2); // s = 4 * qw
                 quaternion_.w_ = Type(0.25) * s;
-                quaternion_.x_ = (R(2,1) - R(1,2)) / s;
-                quaternion_.y_ = (R(0,2) - R(2,0)) / s;
-                quaternion_.z_ = (R(1,0) - R(0,1)) / s;
-            } else if (R(0,0) > R(1,1) && R(0,0) > R(2,2)) {
-                Type s = math::sqrt(Type(1) + R(0,0) - R(1,1) - R(2,2)) * Type(2); // s = 4 * qx
-                quaternion_.w_ = (R(2,1) - R(1,2)) / s;
+                quaternion_.x_ = (R(2, 1) - R(1, 2)) / s;
+                quaternion_.y_ = (R(0, 2) - R(2, 0)) / s;
+                quaternion_.z_ = (R(1, 0) - R(0, 1)) / s;
+            }
+            else if (R(0, 0) > R(1, 1) && R(0, 0) > R(2, 2))
+            {
+                Type s = math::sqrt(Type(1) + R(0, 0) - R(1, 1) - R(2, 2)) * Type(2); // s = 4 * qx
+                quaternion_.w_ = (R(2, 1) - R(1, 2)) / s;
                 quaternion_.x_ = Type(0.25) * s;
-                quaternion_.y_ = (R(0,1) + R(1,0)) / s;
-                quaternion_.z_ = (R(0,2) + R(2,0)) / s;
-            } else if (R(1,1) > R(2,2)) {
-                Type s = math::sqrt(Type(1) + R(1,1) - R(0,0) - R(2,2)) * Type(2); // s = 4 * qy
-                quaternion_.w_ = (R(0,2) - R(2,0)) / s;
-                quaternion_.x_ = (R(0,1) + R(1,0)) / s;
+                quaternion_.y_ = (R(0, 1) + R(1, 0)) / s;
+                quaternion_.z_ = (R(0, 2) + R(2, 0)) / s;
+            }
+            else if (R(1, 1) > R(2, 2))
+            {
+                Type s = math::sqrt(Type(1) + R(1, 1) - R(0, 0) - R(2, 2)) * Type(2); // s = 4 * qy
+                quaternion_.w_ = (R(0, 2) - R(2, 0)) / s;
+                quaternion_.x_ = (R(0, 1) + R(1, 0)) / s;
                 quaternion_.y_ = Type(0.25) * s;
-                quaternion_.z_ = (R(1,2) + R(2,1)) / s;
-            } else {
-                Type s = math::sqrt(Type(1) + R(2,2) - R(0,0) - R(1,1)) * Type(2); // s = 4 * qz
-                quaternion_.w_ = (R(1,0) - R(0,1)) / s;
-                quaternion_.x_ = (R(0,2) + R(2,0)) / s;
-                quaternion_.y_ = (R(1,2) + R(2,1)) / s;
+                quaternion_.z_ = (R(1, 2) + R(2, 1)) / s;
+            }
+            else
+            {
+                Type s = math::sqrt(Type(1) + R(2, 2) - R(0, 0) - R(1, 1)) * Type(2); // s = 4 * qz
+                quaternion_.w_ = (R(1, 0) - R(0, 1)) / s;
+                quaternion_.x_ = (R(0, 2) + R(2, 0)) / s;
+                quaternion_.y_ = (R(1, 2) + R(2, 1)) / s;
                 quaternion_.z_ = Type(0.25) * s;
             }
         }
@@ -842,6 +898,12 @@ namespace linalg
         SE3(const SO3<Type> &r, const Vec3<Type> &t)
         {
             so3_ = r;
+            trans_ = t;
+        }
+
+        SE3(const Mat3<Type> &R, const Vec3<Type> &t)
+        {
+            so3_ = SO3<Type>(R);
             trans_ = t;
         }
 
