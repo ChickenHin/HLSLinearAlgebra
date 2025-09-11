@@ -1,7 +1,6 @@
 #pragma once
 
-#include "common.h"
-#include <cmath>
+//#include "common.h"
 
 // HLS pragma macros - only active during synthesis
 #ifdef __SYNTHESIS__
@@ -18,6 +17,7 @@ namespace math = hls;
 #define HLS_UNROLL
 #define HLS_PIPELINE
 #define HLS_ARRAY_PARTITION(var, type, dim)
+#include <cmath>
 namespace math = std;
 #endif
 
@@ -260,7 +260,7 @@ namespace linalg
 
         // Type data_[_rows][_cols];
         Type data_[_rows * _cols];
-        HLS_ARRAY_PARTITION(data, complete, 0)
+        //HLS_ARRAY_PARTITION(data, complete, 0)
     };
 
     template <typename Type, int rows, int cols>
