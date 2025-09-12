@@ -2,6 +2,8 @@ import vitis
 import os
 import sys
 
+from parse_hls_xml import parse_csynt_reports
+
 # --- Configuration ---
 # TODO: Update TOP_FUNCTION_NAME to the actual top-level function for synthesis.
 # TODO: Update SYNTHESIS_FILE if your top-level function is not in this file.
@@ -66,6 +68,51 @@ def main():
 
     print("--- C-Simulation successful ---")
 
+    print("--- Running Synthesis ---")
+    try:
+        # Using run() which is the standard for Vitis 2023.1+
+        comp.run(operation='SYNTHESIS')
+    except Exception as e:
+        print(f"ERROR: Synthesis failed: {e}", file=sys.stderr)
+        client.close()
+        sys.exit(1)
+
+    print("--- Synthesis successful ---")
+    
+    print("--- Check latency ---")
+    ip_path = component_path + COMPONENT_NAME
+    data = parse_csynt_reports(ip_path)
+
+    latency = data['latency']
+    if latency > 100:
+        print(f"ERROR: Lateycy too high: {latency}", file=sys.stderr)
+        client.close()
+        sys.exit(1)
+
+    print("--- Latency ok ---")
+        
+    print("--- Running Implementation ---")
+    try:
+        # Using run() which is the standard for Vitis 2023.1+
+        comp.run(operation='IMPLEMENTATION')
+    except Exception as e:
+        print(f"ERROR: Implementation failed: {e}", file=sys.stderr)
+        client.close()
+        sys.exit(1)
+
+    print("--- Implementation successful ---")
+    
+    print("--- Running Co-simulation ---")
+    try:
+        # Using run() which is the standard for Vitis 2023.1+
+        comp.run(operation='CO_SIMULATION')
+    except Exception as e:
+        print(f"ERROR: Co-Simulation failed: {e}", file=sys.stderr)
+        client.close()
+        sys.exit(1)
+
+    print("--- Co-simulation successful ---")
+    
     # --- Clean up ---
     client.close()
     print("--- Vitis client closed ---")

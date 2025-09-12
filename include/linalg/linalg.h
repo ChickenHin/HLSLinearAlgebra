@@ -1,6 +1,7 @@
+
 #pragma once
 
-//#include "common.h"
+// #include "common.h"
 
 // HLS pragma macros - only active during synthesis
 #ifdef __SYNTHESIS__
@@ -34,15 +35,15 @@ namespace linalg
         // Default constructor: initialize to zero
         Mat()
         {
-            HLS_INLINE
+//            HLS_INLINE
         mat_init_loop_r:
             for (int r = 0; r < _rows; r++)
             {
-                HLS_UNROLL
+//                HLS_UNROLL
             mat_init_loop_c:
                 for (int c = 0; c < _cols; c++)
                 {
-                    HLS_UNROLL
+//                    HLS_UNROLL
                     get_(r, c) = Type(0);
                 }
             }
@@ -62,16 +63,18 @@ namespace linalg
         {
         mat_const_other_loop_r:
             for (int r = 0; r < _rows; r++)
-#pragma HLS UNROLL
+//#pragma HLS UNROLL
             mat_const_other_loop_c:
                 for (int c = 0; c < _cols; c++)
-#pragma HLS UNROLL
+//#pragma HLS UNROLL
                     get_(r, c) = other(r, c);
         }
 
         operator float() const
         {
-            assert(_rows == 1 && _cols == 1);
+//#ifndef __SYNTHESIS__
+//            assert(_rows == 1 && _cols == 1);
+//#endif
             return get_(0, 0);
         }
 
@@ -95,11 +98,11 @@ namespace linalg
             Mat result;
         mat_zero_loop_r:
             for (int r = 0; r < _rows; r++)
-#pragma HLS UNROLL
+//#pragma HLS UNROLL
 
             mat_zero_loop_c:
                 for (int c = 0; c < _cols; c++)
-#pragma HLS UNROLL
+//#pragma HLS UNROLL
 
                     result(r, c) = Type(0);
             return result;
@@ -112,7 +115,7 @@ namespace linalg
             Mat result = Zero();
         mat_identity_loop_i:
             for (int i = 0; i < _rows; i++)
-#pragma HLS UNROLL
+//#pragma HLS UNROLL
                 result(i, i) = Type(1);
             return result;
         }
@@ -260,7 +263,7 @@ namespace linalg
 
         // Type data_[_rows][_cols];
         Type data_[_rows * _cols];
-        //HLS_ARRAY_PARTITION(data, complete, 0)
+        // HLS_ARRAY_PARTITION(data, complete, 0)
     };
 
     template <typename Type, int rows, int cols>
@@ -621,6 +624,17 @@ namespace linalg
             return Quaternion(w_ * inv, -x_ * inv, -y_ * inv, -z_ * inv);
         }
 
+        Type x() const { return x_; }
+        Type y() const { return y_; }
+        Type z() const { return z_; }
+        Type w() const { return w_; }
+
+        Type &x() { return x_; }
+        Type &y() { return y_; }
+        Type &z() { return z_; }
+        Type &w() { return w_; }
+
+    private:
         // Public components for convenience
         Type w_, x_, y_, z_;
     };
@@ -669,34 +683,34 @@ namespace linalg
             if (trace > Type(0))
             {
                 Type s = math::sqrt(trace + Type(1)) * Type(2); // s = 4 * qw
-                quaternion_.w_ = Type(0.25) * s;
-                quaternion_.x_ = (R(2, 1) - R(1, 2)) / s;
-                quaternion_.y_ = (R(0, 2) - R(2, 0)) / s;
-                quaternion_.z_ = (R(1, 0) - R(0, 1)) / s;
+                quaternion_.w() = Type(0.25) * s;
+                quaternion_.x() = (R(2, 1) - R(1, 2)) / s;
+                quaternion_.y() = (R(0, 2) - R(2, 0)) / s;
+                quaternion_.z() = (R(1, 0) - R(0, 1)) / s;
             }
             else if (R(0, 0) > R(1, 1) && R(0, 0) > R(2, 2))
             {
                 Type s = math::sqrt(Type(1) + R(0, 0) - R(1, 1) - R(2, 2)) * Type(2); // s = 4 * qx
-                quaternion_.w_ = (R(2, 1) - R(1, 2)) / s;
-                quaternion_.x_ = Type(0.25) * s;
-                quaternion_.y_ = (R(0, 1) + R(1, 0)) / s;
-                quaternion_.z_ = (R(0, 2) + R(2, 0)) / s;
+                quaternion_.w() = (R(2, 1) - R(1, 2)) / s;
+                quaternion_.x() = Type(0.25) * s;
+                quaternion_.y() = (R(0, 1) + R(1, 0)) / s;
+                quaternion_.z() = (R(0, 2) + R(2, 0)) / s;
             }
             else if (R(1, 1) > R(2, 2))
             {
                 Type s = math::sqrt(Type(1) + R(1, 1) - R(0, 0) - R(2, 2)) * Type(2); // s = 4 * qy
-                quaternion_.w_ = (R(0, 2) - R(2, 0)) / s;
-                quaternion_.x_ = (R(0, 1) + R(1, 0)) / s;
-                quaternion_.y_ = Type(0.25) * s;
-                quaternion_.z_ = (R(1, 2) + R(2, 1)) / s;
+                quaternion_.w() = (R(0, 2) - R(2, 0)) / s;
+                quaternion_.x() = (R(0, 1) + R(1, 0)) / s;
+                quaternion_.y() = Type(0.25) * s;
+                quaternion_.z() = (R(1, 2) + R(2, 1)) / s;
             }
             else
             {
                 Type s = math::sqrt(Type(1) + R(2, 2) - R(0, 0) - R(1, 1)) * Type(2); // s = 4 * qz
-                quaternion_.w_ = (R(1, 0) - R(0, 1)) / s;
-                quaternion_.x_ = (R(0, 2) + R(2, 0)) / s;
-                quaternion_.y_ = (R(1, 2) + R(2, 1)) / s;
-                quaternion_.z_ = Type(0.25) * s;
+                quaternion_.w() = (R(1, 0) - R(0, 1)) / s;
+                quaternion_.x() = (R(0, 2) + R(2, 0)) / s;
+                quaternion_.y() = (R(1, 2) + R(2, 1)) / s;
+                quaternion_.z() = Type(0.25) * s;
             }
         }
         SO3(const SO3<Type> &other)
@@ -711,7 +725,7 @@ namespace linalg
             quaternion_ = q;
         }
 
-        Quaternion<Type> getQuaterion() const
+        const Quaternion<Type> &unit_quaternion() const
         {
             return quaternion_;
         }
