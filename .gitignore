@@ -5,6 +5,8 @@
 /vivado_workspace/
 /src/vitis_workspace/
 /src/vivado_workspace/
+/tests/hls/vitis_workspace/
+/tests/hls/__pycache__/
 
 # IDE and editor files
 .vscode/
