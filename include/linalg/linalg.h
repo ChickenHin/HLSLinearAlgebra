@@ -461,14 +461,15 @@ namespace linalg
         {
         }
 
-        Mat3(const Type _data[3 * 3])
+        template <typename OtherType>
+        Mat3(const OtherType _data[3 * 3])
         {
             const Mat3<Type> &m = *this;
         mat3_const_loop_r:
             for (int r = 0; r < 3; r++)
             mat3_const_loop_c:
                 for (int c = 0; c < 3; c++)
-                    m(r, c) = _data[r * 3 + c];
+                    m(r, c) = Type(_data[r * 3 + c]);
         }
 
         // 3×3 determinant
