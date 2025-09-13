@@ -1,8 +1,20 @@
 import vitis
 import os
 import sys
+from importlib.metadata import version, PackageNotFoundError
+from pathlib import Path
 
 from parse_hls_xml import parse_csynt_reports
+
+def vitis_version_pkg():
+    try:
+        return version("vitis")  # e.g. "2024.2" or "2025.1"
+    except PackageNotFoundError:
+        return None
+
+def vitis_version_env():
+    xv = os.environ.get("XILINX_VITIS")  # e.g. /tools/Xilinx/Vitis/2024.2
+    return Path(xv).name if xv else None
 
 # --- Configuration ---
 # TODO: Update TOP_FUNCTION_NAME to the actual top-level function for synthesis.
@@ -25,6 +37,8 @@ def main():
     workspace_path = os.path.join(cwd, "vitis_workspace")
     component_path = os.path.join(workspace_path, COMPONENT_NAME)
 
+    vitis_version = vitis_version_env()
+
     # --- Vitis Setup ---
     client = vitis.create_client()
     client.set_workspace(path=workspace_path)
@@ -37,6 +51,7 @@ def main():
     # Create HLS component
     print(f"--- Creating HLS component {COMPONENT_NAME} ---")
     comp = client.create_hls_component(name=COMPONENT_NAME,
+                                       cfg_file=['hls_config.cfg'],
                                        template='empty_hls_component')
 
     # Configure the component
@@ -47,12 +62,15 @@ def main():
     cfg_file.set_value(section='hls', key='flow_target', value='vivado')
 
     # Set source, testbench, and top function
-    cfg_file.set_value(section='hls', key='syn.top', value=TOP_FUNCTION_NAME)
+    # cfg_file.set_value(section='hls', key='syn.top', value=TOP_FUNCTION_NAME)
     cfg_file.add_values(section='hls', key='syn.file', values=[os.path.join(cwd, SYNTHESIS_FILE)])
     cfg_file.add_values(section='hls', key='tb.file', values=[os.path.join(cwd, TESTBENCH_FILE)])
 
     # Add include paths for headers (linalg, hls_numerics)
-    cflags = f"-I{include_path} -D__SYNTHESIS__ -Xclang -fnative-half-type -Xclang -fallow-half-arguments-and-returns"
+    cflags = f"-I{include_path} -D__SYNTHESIS__"
+    if vitis_version > "2023.2":
+        cflags += "-Xclang -fnative-half-type -Xclang -fallow-half-arguments-and-returns"
+        
     cfg_file.set_value(section='hls', key='syn.cflags', value=cflags)
     cfg_file.set_value(section='hls', key='tb.cflags', value=cflags)
 
@@ -60,14 +78,18 @@ def main():
     print("--- Running C-Simulation ---")
     try:
         # Using run() which is the standard for Vitis 2023.1+
-        comp.run(operation='C_SIMULATION')
+        if vitis_version > "2023.2":
+            comp.run(operation='CSIMULATION')
+        else:
+            comp.execute(operation='C_SIMULATION')
     except Exception as e:
         print(f"ERROR: C-Simulation failed: {e}", file=sys.stderr)
         client.close()
+        vitis.dispose()
         sys.exit(1)
 
     print("--- C-Simulation successful ---")
-
+    """
     print("--- Running Synthesis ---")
     try:
         # Using run() which is the standard for Vitis 2023.1+
@@ -75,6 +97,7 @@ def main():
     except Exception as e:
         print(f"ERROR: Synthesis failed: {e}", file=sys.stderr)
         client.close()
+        vitis.dispose()
         sys.exit(1)
 
     print("--- Synthesis successful ---")
@@ -87,6 +110,7 @@ def main():
     if latency > 100:
         print(f"ERROR: Lateycy too high: {latency}", file=sys.stderr)
         client.close()
+        vitis.dispose()
         sys.exit(1)
 
     print("--- Latency ok ---")
@@ -98,6 +122,7 @@ def main():
     except Exception as e:
         print(f"ERROR: Implementation failed: {e}", file=sys.stderr)
         client.close()
+        vitis.dispose()
         sys.exit(1)
 
     print("--- Implementation successful ---")
@@ -109,12 +134,14 @@ def main():
     except Exception as e:
         print(f"ERROR: Co-Simulation failed: {e}", file=sys.stderr)
         client.close()
+        vitis.dispose()
         sys.exit(1)
 
     print("--- Co-simulation successful ---")
-    
+    """
     # --- Clean up ---
     client.close()
+    vitis.dispose()
     print("--- Vitis client closed ---")
 
 if __name__ == "__main__":
