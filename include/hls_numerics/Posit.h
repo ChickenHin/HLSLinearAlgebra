@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef __SYNTHESIS__
+#ifndef USE_VITIS
 #include "hls_compat_ultra_simple.h"
 #else
 #include "hls_math.h"

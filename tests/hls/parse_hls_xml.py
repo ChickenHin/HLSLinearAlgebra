@@ -11,13 +11,17 @@ def parse_xml_reports(folder):
     csynth_path = folder + "/hls/syn/report/csynth.xml"
     impl_path = folder + "/hls/impl/report/verilog/export_impl.xml"
 
-    csynt_results = parse_csynt_reports(csynth_path)
-    impl_results = parse_impl_reports(impl_path)
-
-    results = impl_results
-    results["latency"] = csynt_results["latency"]
-
-    return results
+    if os.path.exists(csynth_path):
+        csynt_results = parse_csynt_reports(csynth_path)
+    else:
+        csynt_results = {}
+    
+    if os.path.exists(impl_path):
+        impl_results = parse_impl_reports(impl_path)
+    else:
+        impl_results = {}
+        
+    return csynt_results, impl_results
 
 
 def parse_csynt_reports(xml_file):

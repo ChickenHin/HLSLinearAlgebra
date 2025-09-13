@@ -1,12 +1,12 @@
 #pragma once
 
-#ifndef __SYNTHESIS__
+#ifndef USE_VITIS
 #include "hls_compat_ultra_simple.h"
 #else
-#include "hls_math.h" 
-#include "ap_int.h"   
+#include "hls_math.h"
+#include "ap_int.h"
 #include "ap_fixed.h"
-#endif 
+#endif
 
 template <int nbits, int es>
 class FloatX
@@ -43,18 +43,32 @@ public:
 
     FloatX(float c)
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         ap_uint<32> bits = *reinterpret_cast<ap_uint<32> *>(&c);
         // unsigned int* bitsPtr = (unsigned int*)&c;
         // unsigned int bits = *bitsPtr; // Dereference to get the raw bits
 
+        bool isZero;
+        if (c == 0.0f)
+            isZero = true;
+        else
+            isZero = false;
+
         bool fsign = bits[31];
         // remove bias from floating point exponent
-        ap_int<9> fexponent = bits(30, 23) - hls::pow(2, 7) + 1;
+        ap_int<9> fexponent;
+        if (isZero)
+            fexponent = 0;
+        else
+            fexponent = bits(30, 23) - hls::pow(2, 7) + 1;
         // get mantisa from floating point
         ap_ufixed<24, 1> fmantissa;
-        fmantissa[23] = 1;
+        if (isZero)
+            fmantissa[23] = 0;
+        else
+            fmantissa[23] = 1;
+
         fmantissa(22, 0) = bits(22, 0);
 
         unpacked_t unpacked;
@@ -63,30 +77,37 @@ public:
         unpacked.exp = fexponent;
         unpacked.frac = fmantissa;
 
-        if (c == 0.0f)
-        {
-            unpacked.sign = 0;
-            unpacked.exp = 0;
-            unpacked.frac = 0;
-        }
-
         encode(unpacked);
     }
 
     FloatX(double c)
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         ap_uint<64> bits = *reinterpret_cast<ap_uint<64> *>(&c);
         // unsigned int* bitsPtr = (unsigned int*)&c;
         // unsigned int bits = *bitsPtr; // Dereference to get the raw bits
 
+        bool isZero;
+        if (c == 0.0)
+            isZero = true;
+        else
+            isZero = false;
+
         bool fsign = bits[63];
         // remove bias from floating point exponent
-        ap_int<12> fexponent = bits(62, 52) - hls::pow(2, 10) + 1;
+        ap_int<12> fexponent;
+        if (isZero)
+            fexponent = 0;
+        else
+            fexponent = bits(62, 52) - hls::pow(2, 10) + 1;
         // get mantisa from floating point
         ap_ufixed<53, 1> fmantissa;
-        fmantissa[52] = 1;
+        if (isZero)
+            fmantissa[52] = 0;
+        else
+            fmantissa[52] = 1;
+
         fmantissa(51, 0) = bits(51, 0);
 
         unpacked_t unpacked;
@@ -95,19 +116,12 @@ public:
         unpacked.exp = fexponent;
         unpacked.frac = fmantissa;
 
-        if (c == 0.0f)
-        {
-            unpacked.sign = 0;
-            unpacked.exp = 0;
-            unpacked.frac = 0;
-        }
-
         encode(unpacked);
     }
 
     operator float() const
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         unpacked_t unpacked = decode();
 
@@ -134,7 +148,7 @@ public:
 
     operator double() const
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         unpacked_t unpacked = decode();
 
@@ -221,16 +235,23 @@ public:
         }
         else
         {
-            while (frac >= 2)
+            plus_operator_normalize_loop:
+            for (int i = 0; i < frac_size + 3; i++)
             {
-                frac = frac >> 1;
-                exp++;
-            }
-
-            while (frac < 1)
-            {
-                frac = frac << 1;
-                exp--;
+                if (frac >= 2)
+                {
+                    frac = frac >> 1;
+                    exp++;
+                }
+                else if (frac < 1)
+                {
+                    frac = frac << 1;
+                    exp--;
+                }
+                else
+                {
+                    break;
+                }
             }
         }
 
@@ -295,7 +316,10 @@ public:
         ap_int<exp_size> exp = in1.exp - in2.exp;
         ap_ufixed<frac_size * 2, 1> frac1 = in1.frac;
         ap_ufixed<frac_size * 2, 1> frac2 = in2.frac;
-        ap_ufixed<frac_size * 2, 1> frac = frac1 / frac2;
+        ap_ufixed<frac_size * 2, 1> frac;
+
+        if (in2.frac != 0)
+            frac = frac1 / frac2;
 
         // normalize
         if (frac < 1)

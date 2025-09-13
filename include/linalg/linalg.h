@@ -4,7 +4,7 @@
 // #include "common.h"
 
 // HLS pragma macros - only active during synthesis
-#ifdef __SYNTHESIS__
+#ifdef USE_VITIS
 #define HLS_PRAGMA(x) _Pragma(#x)
 #define HLS_INLINE HLS_PRAGMA(HLS INLINE)
 #define HLS_UNROLL HLS_PRAGMA(HLS UNROLL)
@@ -464,12 +464,11 @@ namespace linalg
         template <typename OtherType>
         Mat3(const OtherType _data[3 * 3])
         {
-            const Mat3<Type> &m = *this;
         mat3_const_loop_r:
             for (int r = 0; r < 3; r++)
             mat3_const_loop_c:
                 for (int c = 0; c < 3; c++)
-                    m(r, c) = Type(_data[r * 3 + c]);
+                    (*this)(r, c) = Type(_data[r * 3 + c]);
         }
 
         // 3×3 determinant
