@@ -138,7 +138,7 @@ if(BUILD_HLS_TESTS AND VITIS_EXECUTABLE)
     
     # FloatX HLS Test
     set(FLOATX_HLS_COMMAND
-        "source ${VITIS_SETTINGS_SCRIPT} && ${VITIS_EXECUTABLE} -s ${CMAKE_CURRENT_SOURCE_DIR}/hls/run_float.py"
+        "source ${VITIS_SETTINGS_SCRIPT} && ${VITIS_EXECUTABLE} -s ${CMAKE_CURRENT_SOURCE_DIR}/hls/run_floatx.py"
     )
     add_test(
         NAME FloatX_HLS_Test
@@ -151,21 +151,31 @@ if(BUILD_HLS_TESTS AND VITIS_EXECUTABLE)
     )
 
     # Posit HLS Test (template for future implementation)
-    # Note: You'll need to create a run_posit.py script similar to run.py
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/hls/run_posit.py)
-        set(POSIT_HLS_COMMAND
-            "source ${VITIS_SETTINGS_SCRIPT} && ${VITIS_EXECUTABLE} -s ${CMAKE_CURRENT_SOURCE_DIR}/hls/run_posit.py"
-        )
-        add_test(
-            NAME Posit_HLS_Test
-            COMMAND bash -c "${POSIT_HLS_COMMAND}"
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/hls
-        )
-        set_tests_properties(Posit_HLS_Test PROPERTIES
-            TIMEOUT 1800
-            LABELS "HLS;FPGA;Posit"
-        )
-    endif()
+    #set(POSIT_HLS_COMMAND
+    #    "source ${VITIS_SETTINGS_SCRIPT} && ${VITIS_EXECUTABLE} -s ${CMAKE_CURRENT_SOURCE_DIR}/hls/run_posit.py"
+    #)
+    #add_test(
+    #    NAME Posit_HLS_Test
+    #    COMMAND bash -c "${POSIT_HLS_COMMAND}"
+    #    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/hls
+    #)
+    #set_tests_properties(Posit_HLS_Test PROPERTIES
+    #    TIMEOUT 1800
+    #    LABELS "HLS;FPGA;Posit"
+    #)
+
+    set(LINALG_HLS_COMMAND
+        "source ${VITIS_SETTINGS_SCRIPT} && ${VITIS_EXECUTABLE} -s ${CMAKE_CURRENT_SOURCE_DIR}/hls/run_linalg.py"
+    )
+    add_test(
+        NAME LinAlg_HLS_Test
+        COMMAND bash -c "${LINALG_HLS_COMMAND}"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/hls
+    )
+    set_tests_properties(LinAlg_HLS_Test PROPERTIES
+        TIMEOUT 1800
+        LABELS "HLS;FPGA;LinAlg"
+    )
 
     # Add custom target for HLS tests
     add_custom_target(hls_tests

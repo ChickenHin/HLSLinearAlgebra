@@ -99,18 +99,18 @@ TEST_F(ComprehensiveLinalgTest2, QuaternionOperations) {
     // Quaternion multiplication (identity * q = q)
     linalg::Quaternion<double> q(0.5, 0.5, 0.5, 0.5);
     auto result = q_identity * q;
-    EXPECT_NEAR(result.w_, q.w_, TOLERANCE);
-    EXPECT_NEAR(result.x_, q.x_, TOLERANCE);
-    EXPECT_NEAR(result.y_, q.y_, TOLERANCE);
-    EXPECT_NEAR(result.z_, q.z_, TOLERANCE);
+    EXPECT_NEAR(result.w(), q.w(), TOLERANCE);
+    EXPECT_NEAR(result.x(), q.x(), TOLERANCE);
+    EXPECT_NEAR(result.y(), q.y(), TOLERANCE);
+    EXPECT_NEAR(result.z(), q.z(), TOLERANCE);
     
     // Quaternion inverse
     auto q_inv = q.inverse();
     auto should_be_identity = q * q_inv;
-    EXPECT_NEAR(should_be_identity.w_, 1.0, TOLERANCE);
-    EXPECT_NEAR(should_be_identity.x_, 0.0, TOLERANCE);
-    EXPECT_NEAR(should_be_identity.y_, 0.0, TOLERANCE);
-    EXPECT_NEAR(should_be_identity.z_, 0.0, TOLERANCE);
+    EXPECT_NEAR(should_be_identity.w(), 1.0, TOLERANCE);
+    EXPECT_NEAR(should_be_identity.x(), 0.0, TOLERANCE);
+    EXPECT_NEAR(should_be_identity.y(), 0.0, TOLERANCE);
+    EXPECT_NEAR(should_be_identity.z(), 0.0, TOLERANCE);
     
     // Vector rotation by quaternion
     linalg::Vec3<double> v(1.0, 0.0, 0.0);
