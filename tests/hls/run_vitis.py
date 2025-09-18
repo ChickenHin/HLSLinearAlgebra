@@ -4,6 +4,7 @@ import sys
 from importlib.metadata import version, PackageNotFoundError
 from pathlib import Path
 import subprocess, re
+import shutil
 
 from parse_hls_xml import parse_xml_reports
 
@@ -28,6 +29,10 @@ def run_vitis(workspace_path, include_path, part, clock_period_ns, component_nam
 
     # --- Vitis Setup ---
     client = vitis.create_client()
+    if os.path.exists(workspace_path):
+        print(f"--- Deleting existing workspace {workspace_path} ---")
+        shutil.rmtree(workspace_path)
+    
     client.set_workspace(path=workspace_path)
 
     cwd = os.getcwd()
@@ -100,6 +105,7 @@ def run_vitis(workspace_path, include_path, part, clock_period_ns, component_nam
     csynth_report, impl_report = parse_xml_reports(ip_path)
 
     latency = csynth_report['latency']
+    print("latency: ", latency)
     if latency > latency_threshold:
         print(f"ERROR: Lateycy too high: {latency}", file=sys.stderr)
         client.close()

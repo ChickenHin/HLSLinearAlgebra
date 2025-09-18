@@ -38,6 +38,10 @@ if(BUILD_HLS_TESTS)
     endif()
 endif()
 
+# Find Eigen3
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+message(STATUS "Found Eigen3: ${Eigen3_DIR}")
+
 # GoogleTest setup for CPU tests
 if(BUILD_TESTS)
     FetchContent_Declare(

@@ -17,7 +17,7 @@ def main():
     cwd = os.getcwd()
     project_root = os.path.abspath(os.path.join(cwd, '..', '..'))
     include_path = os.path.join(project_root, 'include')
-    workspace_path = os.path.join(cwd, "vitis_workspace_floatx")
+    workspace_path = os.path.join(project_root, "build/vitis_workspace_floatx")
 
     run_vitis(workspace_path, include_path, PART, CLOCK_PERIOD_NS, COMPONENT_NAME, TOP_FUNCTION_NAME, SYNTHESIS_FILE, TESTBENCH_FILE, 1076)
 

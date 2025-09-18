@@ -1,0 +1,2 @@
+add_subdirectory(determinant)
+add_subdirectory(inverse)
