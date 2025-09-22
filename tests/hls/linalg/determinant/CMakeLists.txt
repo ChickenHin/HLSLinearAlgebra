@@ -10,9 +10,3 @@ set_tests_properties(Det_HLS_Test PROPERTIES
     TIMEOUT 1800
     LABELS "HLS;FPGA;LinAlg"
 )
-
-# Add custom target for HLS tests
-add_custom_target(determinant_hls_tests
-    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -L "HLS"
-    COMMENT "Running all HLS/FPGA tests"
-)

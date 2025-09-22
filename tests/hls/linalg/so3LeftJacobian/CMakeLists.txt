@@ -1,23 +1,12 @@
-# Add the so3LeftJacobian test executable
-add_executable(linalg_so3leftjacobian_test
-    linalg_so3leftjacobian_test.cpp
-    linalg_so3leftjacobian_top.cpp
+set(SO3LEFTJ_HLS_COMMAND
+    "source ${VITIS_SETTINGS_SCRIPT} && ${VITIS_EXECUTABLE} -s ${CMAKE_CURRENT_SOURCE_DIR}/run.py"
 )
-
-# Link against the linalg and Eigen3 libraries
-target_link_libraries(linalg_so3leftjacobian_test PRIVATE 
-    linalg
-    Eigen3::Eigen
+add_test(
+    NAME So3LeftJacobian_HLS_Test
+    COMMAND bash -c "${SO3LEFTJ_HLS_COMMAND}"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
-
-# Add include directories
-target_include_directories(linalg_so3leftjacobian_test PRIVATE 
-    ${CMAKE_SOURCE_DIR}/include
-    ${EIGEN3_INCLUDE_DIRS}
-)
-
-# Add test
-add_test(NAME linalg_so3leftjacobian_test
-    COMMAND linalg_so3leftjacobian_test
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+set_tests_properties(So3LeftJacobian_HLS_Test PROPERTIES
+    TIMEOUT 1800
+    LABELS "HLS;FPGA;LinAlg"
 )

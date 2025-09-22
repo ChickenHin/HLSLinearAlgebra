@@ -1,12 +1,8 @@
 #pragma once
 
-#ifndef USE_VITIS
-#include "hls_compat_ultra_simple.h"
-#else
 #include "hls_math.h"
 #include "ap_int.h"
 #include "ap_fixed.h"
-#endif
 
 template <int nbits, int es>
 class FloatX
@@ -235,7 +231,7 @@ public:
         }
         else
         {
-            plus_operator_normalize_loop:
+        plus_operator_normalize_loop:
             for (int i = 0; i < frac_size + 3; i++)
             {
                 if (frac >= 2)

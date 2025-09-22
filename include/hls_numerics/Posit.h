@@ -1,12 +1,8 @@
 #pragma once
 
-#ifndef USE_VITIS
-#include "hls_compat_ultra_simple.h"
-#else
 #include "hls_math.h"
 #include "ap_int.h"
 #include "ap_fixed.h"
-#endif
 
 #include "common.h"
 

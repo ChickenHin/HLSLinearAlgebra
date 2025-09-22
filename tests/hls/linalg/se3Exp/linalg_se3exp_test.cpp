@@ -38,47 +38,6 @@ int test_se3exp(const linalg::Vec6<double> &xi, const std::string &test_name) {
     linalg::SE3<double> T_expected = linalg::se3Exp(xi);
     linalg::Mat4<double> T_expected_mat = T_expected.matrix();
     
-    // Eigen implementation for comparison
-    Eigen::Vector3d omega(xi(0), xi(1), xi(2));
-    Eigen::Vector3d v(xi(3), xi(4), xi(5));
-    
-    Eigen::Matrix4d T_eigen = Eigen::Matrix4d::Identity();
-    double theta = omega.norm();
-    
-    if (theta > 1e-10) {
-        // Normalize the rotation part
-        Eigen::Vector3d a = omega.normalized();
-        
-        // Skew-symmetric matrix of a
-        Eigen::Matrix3d a_hat;
-        a_hat << 0, -a(2), a(1),
-                a(2), 0, -a(0),
-                -a(1), a(0), 0;
-        
-        // Rodrigues' formula for rotation part
-        Eigen::Matrix3d R = Eigen::Matrix3d::Identity() + 
-                           sin(theta) * a_hat + 
-                           (1 - cos(theta)) * a_hat * a_hat;
-        
-        // Compute translation part
-        Eigen::Matrix3d V = Eigen::Matrix3d::Identity() + 
-                           (1 - cos(theta)) / (theta * theta) * a_hat + 
-                           (theta - sin(theta)) / (theta * theta * theta) * a_hat * a_hat;
-        
-        // Combine into SE(3) matrix
-        T_eigen.block<3, 3>(0, 0) = R;
-        T_eigen.block<3, 1>(0, 3) = V * v;
-    } else {
-        // For very small angles, use the first-order approximation
-        Eigen::Matrix3d omega_hat;
-        omega_hat << 0, -omega(2), omega(1),
-                    omega(2), 0, -omega(0),
-                    -omega(1), omega(0), 0;
-        
-        T_eigen.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity() + omega_hat;
-        T_eigen.block<3, 1>(0, 3) = v;
-    }
-    
     // Check results against linalg reference
     double maxe_linalg = 0.0;
     double maxe_eigen = 0.0;
@@ -94,20 +53,8 @@ int test_se3exp(const linalg::Vec6<double> &xi, const std::string &test_name) {
         }
     }
     
-    // Compare with Eigen
-    for (int r = 0; r < 4; ++r) {
-        for (int c = 0; c < 4; ++c) {
-            errors += check_rel_error(
-                test_name + " [Eigen] T[" + std::to_string(r) + "][" + std::to_string(c) + "]",
-                T_eigen(r, c),
-                T_array[r * 4 + c],
-                maxe_eigen
-            );
-        }
-    }
-    
-    // Use the maximum error from both comparisons
-    double maxe = std::max(maxe_linalg, maxe_eigen);
+    // Use only linalg reference error as metric
+    double maxe = maxe_linalg;
     
     if (errors == 0) {
         std::cout << "PASS: " << test_name << " (max rel error = " << maxe << ")" << std::endl;

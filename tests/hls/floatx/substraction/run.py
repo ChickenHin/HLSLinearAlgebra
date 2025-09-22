@@ -9,7 +9,7 @@ from run_vitis import run_vitis
 # --- Configuration ---
 PART = 'xc7z020clg400-1'
 CLOCK_PERIOD_NS = "10"
-COMPONENT_NAME = "linalg_determinant_hls"
+COMPONENT_NAME = "floatx_substraction_hls"
 TOP_FUNCTION_NAME = "top"
 SYNTHESIS_FILE = "top.cpp"
 TESTBENCH_FILE = "test.cpp"

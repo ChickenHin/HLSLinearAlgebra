@@ -35,20 +35,21 @@ namespace linalg
         // Default constructor: initialize to zero
         Mat()
         {
-//            HLS_INLINE
+            //            HLS_INLINE
         mat_init_loop_r:
             for (int r = 0; r < _rows; r++)
             {
-//                HLS_UNROLL
+                //                HLS_UNROLL
             mat_init_loop_c:
                 for (int c = 0; c < _cols; c++)
                 {
-//                    HLS_UNROLL
+                    //                    HLS_UNROLL
                     get_(r, c) = Type(0);
                 }
             }
         }
 
+        // Row major array constructor
         Mat(const Type _data[_rows * _cols])
         {
         mat_const_data_loop_r:
@@ -63,18 +64,18 @@ namespace linalg
         {
         mat_const_other_loop_r:
             for (int r = 0; r < _rows; r++)
-//#pragma HLS UNROLL
+                // #pragma HLS UNROLL
             mat_const_other_loop_c:
                 for (int c = 0; c < _cols; c++)
-//#pragma HLS UNROLL
+                    // #pragma HLS UNROLL
                     get_(r, c) = other(r, c);
         }
 
         operator float() const
         {
-//#ifndef __SYNTHESIS__
-//            assert(_rows == 1 && _cols == 1);
-//#endif
+#ifndef USE_VITIS
+            assert(_rows == 1 && _cols == 1);
+#endif
             return get_(0, 0);
         }
 
@@ -98,11 +99,11 @@ namespace linalg
             Mat result;
         mat_zero_loop_r:
             for (int r = 0; r < _rows; r++)
-//#pragma HLS UNROLL
+                // #pragma HLS UNROLL
 
             mat_zero_loop_c:
                 for (int c = 0; c < _cols; c++)
-//#pragma HLS UNROLL
+                    // #pragma HLS UNROLL
 
                     result(r, c) = Type(0);
             return result;
@@ -111,11 +112,13 @@ namespace linalg
         // Static "Identity" constructor (square matrices only!)
         static Mat Identity()
         {
-            // static_assert(_rows == _cols, "Identity only makes sense for square matrices");
+#ifndef USE_VITIS
+            static_assert(_rows == _cols, "Identity only makes sense for square matrices");
+#endif
             Mat result = Zero();
         mat_identity_loop_i:
             for (int i = 0; i < _rows; i++)
-//#pragma HLS UNROLL
+                // #pragma HLS UNROLL
                 result(i, i) = Type(1);
             return result;
         }
@@ -141,7 +144,9 @@ namespace linalg
         template <typename Type2, int __rows, int __cols>
         Mat<Type, _rows, __cols> operator*(const Mat<Type2, __rows, __cols> &rhs) const
         {
-            // static_assert(_cols == __rows, "Inner dimensions must match for matrix multiplication");
+#ifndef USE_VITIS
+            static_assert(_cols == __rows, "Inner dimensions must match for matrix multiplication");
+#endif
 
             Mat<Type, _rows, __cols> result = Mat<Type, _rows, __cols>::Zero();
         mat_mult_loop_r:
@@ -307,7 +312,7 @@ namespace linalg
         Vec1() : Mat<Type, 1, 1>() {}
         Vec1(Type x)
         {
-            Mat<Type, 1, 1>::data[0] = x;
+            (*this)(0) = x;
         }
     };
 
@@ -938,10 +943,10 @@ namespace linalg
             Mat3<Type> R = so3_.matrix();
         se3_matrix_loop_r:
             for (int r = 0; r < 3; r++)
-#pragma HLS UNROLL
+                // #pragma HLS UNROLL
             se3_matrix_loop_c:
                 for (int c = 0; c < 3; c++)
-#pragma HLS UNROLL
+                    // #pragma HLS UNROLL
                     mat(r, c) = R(r, c);
             mat(3, 0) = trans_(0);
             mat(3, 1) = trans_(1);

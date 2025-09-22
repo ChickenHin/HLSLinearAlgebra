@@ -63,8 +63,10 @@ def run_vitis(workspace_path, include_path, part, clock_period_ns, component_nam
     cfg_file.add_values(section='hls', key='syn.file', values=[os.path.join(cwd, synthesis_file)])
     cfg_file.add_values(section='hls', key='tb.file', values=[os.path.join(cwd, testbench_file)])
 
-    # Add include paths for headers (linalg, hls_numerics)
-    cflags = f"-I{include_path} -DUSE_VITIS"
+    # Add include paths for headers (project includes, Eigen)
+    # Note: Eigen is typically installed at /usr/include/eigen3 in Ubuntu images
+    eigen_inc = "/usr/include/eigen3"
+    cflags = f"-I{include_path} -I{eigen_inc} -DUSE_VITIS"
     #if vitis_version > "2023.2":
     #    cflags += "-Xclang -fnative-half-type -Xclang -fallow-half-arguments-and-returns"
         

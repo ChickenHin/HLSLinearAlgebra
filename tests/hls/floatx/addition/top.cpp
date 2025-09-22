@@ -20,14 +20,11 @@ using Fx = FloatX<N_BITS, E_BITS>;
  * @param out_mul   Result of a * b.
  * @param out_div   Result of a / b.
  */
-void floatx_top(double in_a, double in_b, double& out_add, double& out_sub, double& out_mul, double& out_div) {
+void top(double in_a, double in_b, double& out) {
     // HLS pragmas to define the interface for the hardware kernel
     #pragma HLS INTERFACE s_axilite port=in_a bundle=control
     #pragma HLS INTERFACE s_axilite port=in_b bundle=control
-    #pragma HLS INTERFACE s_axilite port=out_add bundle=control
-    #pragma HLS INTERFACE s_axilite port=out_sub bundle=control
-    #pragma HLS INTERFACE s_axilite port=out_mul bundle=control
-    #pragma HLS INTERFACE s_axilite port=out_div bundle=control
+    #pragma HLS INTERFACE s_axilite port=out bundle=control
     #pragma HLS INTERFACE s_axilite port=return bundle=control
 
     // Convert inputs from double to FloatX
@@ -35,8 +32,5 @@ void floatx_top(double in_a, double in_b, double& out_add, double& out_sub, doub
     Fx fx_b(in_b);
 
     // Perform arithmetic operations and convert back to double for output
-    out_add = (double)(fx_a + fx_b);
-    out_sub = (double)(fx_a - fx_b);
-    out_mul = (double)(fx_a * fx_b);
-    out_div = (double)(fx_a / fx_b);
+    out = (double)(fx_a + fx_b);
 }

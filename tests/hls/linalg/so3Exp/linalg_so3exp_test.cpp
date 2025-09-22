@@ -39,8 +39,13 @@ int test_so3exp(const linalg::Vec3<double> &phi, const std::string &test_name) {
     linalg::Mat3<double> R_expected_mat = R_expected.matrix();
     
     // Eigen implementation for comparison
-    Eigen::AngleAxisd aa(phi.norm(), phi.normalized().eval());
-    Eigen::Matrix3d R_eigen = aa.toRotationMatrix();
+    Eigen::Vector3d phi_e(phi(0), phi(1), phi(2));
+    double theta = phi_e.norm();
+    Eigen::Matrix3d R_eigen = Eigen::Matrix3d::Identity();
+    if (theta > 1e-12) {
+        Eigen::AngleAxisd aa(theta, phi_e.normalized());
+        R_eigen = aa.toRotationMatrix();
+    }
     
     // Check results against linalg reference
     double maxe_linalg = 0.0;

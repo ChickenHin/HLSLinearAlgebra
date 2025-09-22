@@ -1,2 +1,6 @@
 add_subdirectory(determinant)
 add_subdirectory(inverse)
+add_subdirectory(quaternion_rotate)
+add_subdirectory(se3Exp)
+add_subdirectory(so3Exp)
+add_subdirectory(so3LeftJacobian)
