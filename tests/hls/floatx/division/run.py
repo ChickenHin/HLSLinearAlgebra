@@ -5,7 +5,6 @@ import sys
 sys.path.append("../..")
 
 from run_vitis import run_vitis
-from parse_hls_xml import parse_csynt_reports
 
 # --- Configuration ---
 PART = 'xc7z020clg400-1'

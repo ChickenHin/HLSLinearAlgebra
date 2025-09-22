@@ -107,7 +107,7 @@ def run_vitis(workspace_path, include_path, part, clock_period_ns, component_nam
     csynth_report, impl_report = parse_xml_reports(ip_path)
 
     latency = csynth_report['latency']
-    print("latency: ", latency)
+    print("latency: ", latency ," max: ", latency_threshold)
     if latency > latency_threshold:
         print(f"ERROR: Lateycy too high: {latency}", file=sys.stderr)
         client.close()

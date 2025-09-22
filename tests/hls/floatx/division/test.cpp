@@ -4,7 +4,7 @@
 #include <limits>
 #include <string>
 
-#include "test_floatx_common.h"
+#include "../test_floatx_common.h"
 
 extern "C" void top(double in_a, double in_b, double &out);
 
