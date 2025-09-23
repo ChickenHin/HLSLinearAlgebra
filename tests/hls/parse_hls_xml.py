@@ -40,6 +40,8 @@ def parse_csynt_reports(xml_file):
             # results['Latency_worst'] = latency_node.attrib.get('Worst-caseLatency')
             # results['latency'] = latency_node.find('Best-caseLatency').text
             results['latency'] = int(latency_node.find('Worst-caseLatency').text)
+            results['II'] = int(latency_node.find('PipelineInitiationInterval').text)
+            results['depth'] = float(latency_node.find('PipelineDepth').text)
         latency_node = perf_node.find('SummaryOfTimingAnalysis')
         if latency_node is not None:
             results['clock'] = float(latency_node.find('EstimatedClockPeriod').text)

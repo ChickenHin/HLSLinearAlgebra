@@ -35,7 +35,7 @@ int main()
 
         // Hardware (HLS) result
         double hw_result;
-        floatx_div(a, b, hw_result);
+        top(a, b, hw_result);
 
         // Compare results
         if (check_floatx_error("Division", sw_result, hw_result, max_error, a_str, b_str))

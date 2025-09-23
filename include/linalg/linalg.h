@@ -50,18 +50,23 @@ namespace linalg
         }
 
         // Row major array constructor
-        Mat(const Type _data[_rows * _cols])
+        template <typename OtherType>
+        Mat(const OtherType _data[_rows * _cols])
         {
+            // #pragma HLS INLINE
         mat_const_data_loop_r:
             for (int r = 0; r < _rows; r++)
+                // #pragma HLS UNROLL
             mat_init_loop_c:
                 for (int c = 0; c < _cols; c++)
-                    get_(r, c) = _data[r * _cols + c];
+                    // #pragma HLS UNROLL
+                    get_(r, c) = Type(_data[r * _cols + c]);
         }
 
         // Copy constructor
         Mat(const Mat &other)
         {
+
         mat_const_other_loop_r:
             for (int r = 0; r < _rows; r++)
                 // #pragma HLS UNROLL
@@ -222,24 +227,32 @@ namespace linalg
         // Element accessors (row, col)
         Type &operator()(int r, int c)
         {
+            // #pragma HLS INLINE
             return get_(r, c);
         }
 
         Type operator()(int r, int c) const
         {
+            // #pragma HLS INLINE
             return get_(r, c);
         }
 
         // For vector-like usage (assumes single column, i.e. col = 0)
         Type &operator()(int r)
         {
+// #pragma HLS INLINE
+#ifndef USE_VITIS
             static_assert(_cols == 1, "Single-index operator() only valid for Nx1 matrices (vectors)");
+#endif
             return get_(r, 0);
         }
 
         Type operator()(int r) const
         {
+// #pragma HLS INLINE
+#ifndef USE_VITIS
             static_assert(_cols == 1, "Single-index operator() only valid for Nx1 matrices (vectors)");
+#endif
             return get_(r, 0);
         }
 
@@ -256,13 +269,15 @@ namespace linalg
     protected:
         Type &get_(int r, int c)
         {
-            // return data_[r * _cols + c];
+            // #pragma HLS INLINE
+            //  return data_[r * _cols + c];
             return data_[c * _rows + r];
         }
 
         Type get_(int r, int c) const
         {
-            // return data_[r * _cols + c];
+            // #pragma HLS INLINE
+            //  return data_[r * _cols + c];
             return data_[c * _rows + r];
         }
 
@@ -459,28 +474,44 @@ namespace linalg
     class Mat3 : public Mat<Type, 3, 3>
     {
     public:
-        Mat3() : Mat<Type, 3, 3>() {}
+        Mat3() : Mat<Type, 3, 3>()
+        {
+#pragma HLS ARRAY_PARTITION variable = Mat < Type, 3, 3> ::data_ dim = 1 type = complete
+        }
 
         Mat3(const Mat<Type, 3, 3> &mat)
             : Mat<Type, 3, 3>(mat) // call the base-class copy constructor
         {
         }
 
-        template <typename OtherType>
-        Mat3(const OtherType _data[3 * 3])
+        Mat3(const Type mat[9])
+            : Mat<Type, 3, 3>(mat) // call the base-class copy constructor
         {
-        mat3_const_loop_r:
-            for (int r = 0; r < 3; r++)
-            mat3_const_loop_c:
-                for (int c = 0; c < 3; c++)
-                    (*this)(r, c) = Type(_data[r * 3 + c]);
         }
 
         // 3×3 determinant
         Type determinant() const
         {
-            const auto &m = *this;
-            return m(0, 0) * (m(1, 1) * m(2, 2) - m(1, 2) * m(2, 1)) - m(0, 1) * (m(1, 0) * m(2, 2) - m(1, 2) * m(2, 0)) + m(0, 2) * (m(1, 0) * m(2, 1) - m(1, 1) * m(2, 0));
+            // HLS_INLINE
+            //  HLS_PIPELINE
+            // #pragma HLS INLINE
+            //  #pragma HLS PIPELINE
+            // const auto &m = *this;
+            //  return m(0, 0) * (m(1, 1) * m(2, 2) - m(1, 2) * m(2, 1)) - m(0, 1) * (m(1, 0) * m(2, 2) - m(1, 2) * m(2, 0)) + m(0, 2) * (m(1, 0) * m(2, 1) - m(1, 1) * m(2, 0));
+            //  Type aux1 = m(0, 0) * (m(1, 1) * m(2, 2) - m(1, 2) * m(2, 1));
+            Type aux1_1 = (*this)(1, 1) * (*this)(2, 2);
+            Type aux1_2 = (*this)(1, 2) * (*this)(2, 1);
+            Type aux1 = (*this)(0, 0) * (aux1_1 - aux1_2);
+            // Type aux2 = -m(0, 1) * (m(1, 0) * m(2, 2) - m(1, 2) * m(2, 0));
+            Type aux2_1 = (*this)(1, 0) * (*this)(2, 2);
+            Type aux2_2 = (*this)(1, 2) * (*this)(2, 0);
+            Type aux2 = -(*this)(0, 1) * (aux2_1 - aux2_2);
+            // Type aux3 = m(0, 2) * (m(1, 0) * m(2, 1) - m(1, 1) * m(2, 0));
+            Type aux3_1 = (*this)(1, 0) * (*this)(2, 1);
+            Type aux3_2 = (*this)(1, 1) * (*this)(2, 0);
+            Type aux3 = (*this)(0, 2) * (aux3_1 - aux3_2);
+
+            return aux1 + aux2 + aux3;
         }
 
         // Inverse of 3×3

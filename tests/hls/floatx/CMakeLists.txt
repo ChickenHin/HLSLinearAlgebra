@@ -1,4 +1,6 @@
+add_subdirectory(conversion_float)
+add_subdirectory(conversion_double)
 add_subdirectory(addition)
 add_subdirectory(substraction)
-# add_subdirectory(multiplication)
-# add_subdirectory(division)
+add_subdirectory(multiplication)
+add_subdirectory(division)

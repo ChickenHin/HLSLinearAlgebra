@@ -23,7 +23,7 @@ def vitis_version_cli():
     m = re.search(r"(\d{4}\.\d)", out)
     return m.group(1) if m else out.strip()  # fallback to full banner if pattern changes
 
-def run_vitis(workspace_path, include_path, part, clock_period_ns, component_name, top_function_name, synthesis_file, testbench_file, latency_threshold=100):
+def run_vitis(workspace_path, include_path, part, clock_period_ns, component_name, top_function_name, synthesis_file, testbench_file, ii_threshold=100, depth_threshold=100):
 
     vitis_version = vitis_version_env()
 
@@ -82,10 +82,10 @@ def run_vitis(workspace_path, include_path, part, clock_period_ns, component_nam
         else:
             comp.execute(operation='C_SIMULATION')
     except Exception as e:
-        print(f"ERROR: C-Simulation failed: {e}", file=sys.stderr)
+        print(f"ERROR: C-Simulation failed: {e}")
         client.close()
         vitis.dispose()
-        # sys.exit(1)
+        sys.exit(1)
     print("--- C-Simulation successful ---")
     
     print("--- Running Synthesis ---")
@@ -96,24 +96,27 @@ def run_vitis(workspace_path, include_path, part, clock_period_ns, component_nam
         else:
             comp.execute(operation='SYNTHESIS')
     except Exception as e:
-        print(f"ERROR: Synthesis failed: {e}", file=sys.stderr)
+        print(f"ERROR: Synthesis failed: {e}")
         client.close()
         vitis.dispose()
-        # sys.exit(1)
+        sys.exit(1)
     print("--- Synthesis successful ---")
     
-    print("--- Check latency ---")
+    print("--- Check pipeline ---")
     ip_path = component_path + "/" + component_name
     csynth_report, impl_report = parse_xml_reports(ip_path)
 
-    latency = csynth_report['latency']
-    print("latency: ", latency ," max: ", latency_threshold)
-    if latency > latency_threshold:
-        print(f"ERROR: Lateycy too high: {latency}", file=sys.stderr)
+    ii = csynth_report['II']
+    depth = csynth_report['depth']
+    
+    print("ii: ", ii ," max: ", ii_threshold)
+    print("depth: ", depth ," max: ", depth_threshold)
+    if ii > ii_threshold or depth > depth_threshold:
+        print(f"ERROR: Bad pipelining")
         client.close()
         vitis.dispose()
-        # sys.exit(1)
-    print("--- Latency ok ---")
+        sys.exit(1)
+    print("--- Pipeline ok ---")
     """
     print("--- Running Implementation ---")
     try:
