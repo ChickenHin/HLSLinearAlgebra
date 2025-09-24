@@ -1,0 +1,12 @@
+set(POSIT_MUL_HLS_COMMAND
+    "source ${VITIS_SETTINGS_SCRIPT} && ${VITIS_EXECUTABLE} -s ${CMAKE_CURRENT_SOURCE_DIR}/run.py"
+)
+add_test(
+    NAME Posit_Mul_HLS_Test
+    COMMAND bash -c "${POSIT_MUL_HLS_COMMAND}"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+set_tests_properties(Posit_Mul_HLS_Test PROPERTIES
+    TIMEOUT 1800
+    LABELS "HLS;FPGA;LinAlg"
+)

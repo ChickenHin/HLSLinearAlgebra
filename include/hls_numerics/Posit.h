@@ -44,7 +44,8 @@ public:
     template <int nbits, int es>
     ap_uint<nbits> encode() const
     {
-#pragma HLS PIPELINE off
+#pragma HLS INLINE
+        // #pragma HLS PIPELINE off
         ap_uint<nbits> bits;
 
         bool reg_bit;
@@ -114,7 +115,8 @@ public:
     template <int nbits, int es>
     void decode(const ap_uint<nbits> &bits)
     {
-#pragma HLS PIPELINE off
+#pragma HLS INLINE
+        // #pragma HLS PIPELINE off
         bool simbol = bits[nbits - 2];
         int lenght = 0;
         int e_counter = 0;
@@ -939,7 +941,7 @@ public:
 
     Posit(float c)
     {
-        // #pragma HLS INLINE
+#pragma HLS INLINE
 
         ap_uint<32> bits = *reinterpret_cast<ap_uint<32> *>(&c);
         // unsigned int* bitsPtr = (unsigned int*)&c;
@@ -1118,7 +1120,7 @@ public:
 
     operator float() const
     {
-        // #pragma HLS INLINE
+#pragma HLS INLINE
 
         posit_unpacked<kbits, ebits, fbits> unpacked;
         unpacked.template decode<nbits, ebits>(bits_);
