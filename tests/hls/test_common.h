@@ -1,5 +1,5 @@
-#ifndef TEST_FLOATX_COMMON_H
-#define TEST_FLOATX_COMMON_H
+#ifndef TEST_COMMON_H
+#define TEST_COMMON_H
 
 #include <iostream>
 #include <cmath>
@@ -8,7 +8,7 @@
 #include <string>
 
 // Helper function to check for errors
-bool check_floatx_error(const std::string &op_name, double expected, double actual, double &max_error, const std::string &a_str, const std::string &b_str)
+bool check_error(const std::string &op_name, double expected, double actual, double &max_error, const std::string &a_str, const std::string &b_str)
 {
     double error = 0.0;
 
@@ -56,7 +56,7 @@ bool check_floatx_error(const std::string &op_name, double expected, double actu
 }
 
 // Test vectors for all operations
-const double FLOATX_TEST_VECTORS[][2] = {
+const double TEST_VECTORS[][2] = {
     {3.14159, 2.71828},     // Pi and e
     {100.0, 0.5},           // Large and small numbers
     {-50.25, 25.125},       // Negative and positive
@@ -69,7 +69,7 @@ const double FLOATX_TEST_VECTORS[][2] = {
     {1.2345e-10, 9.8765e10} // Very small and very large
 };
 
-const int NUM_TEST_CASES = sizeof(FLOATX_TEST_VECTORS) / sizeof(FLOATX_TEST_VECTORS[0]);
+const int NUM_TEST_CASES = sizeof(TEST_VECTORS) / sizeof(TEST_VECTORS[0]);
 
 // Function to format double for output
 std::string format_double(double val)

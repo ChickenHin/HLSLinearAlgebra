@@ -44,6 +44,7 @@ public:
     template <int nbits, int es>
     ap_uint<nbits> encode() const
     {
+#pragma HLS PIPELINE off
         ap_uint<nbits> bits;
 
         bool reg_bit;
@@ -78,9 +79,10 @@ public:
         int reg_start = nbits - 2;
 
     Posit_encode_for:
-        for (int i = 0; i < reg_len; i++)
+        for (int i = 0; i < nbits - 1; i++)
         {
-            bits[reg_start - i] = reg_bit;
+            if (i < reg_len)
+                bits[reg_start - i] = reg_bit;
         }
 
         int reg_end = reg_start - reg_len;
@@ -112,6 +114,7 @@ public:
     template <int nbits, int es>
     void decode(const ap_uint<nbits> &bits)
     {
+#pragma HLS PIPELINE off
         bool simbol = bits[nbits - 2];
         int lenght = 0;
         int e_counter = 0;
@@ -436,6 +439,18 @@ posit_unpacked<kbits, ebits, fbits> posit_adder(const posit_unpacked<kbits, ebit
     // normalize
     if (frac > 0)
     {
+        int shift = count_leading_simbol(frac, 0) - 2;
+        if (shift > 0)
+        {
+            frac = frac << shift;
+            exp = exp - shift;
+        }
+        else if (shift < 0)
+        {
+            frac = frac >> -shift;
+            exp = exp + -shift;
+        }
+        /*
     Posit_add_while_1:
         while (frac >= 2)
         {
@@ -449,6 +464,7 @@ posit_unpacked<kbits, ebits, fbits> posit_adder(const posit_unpacked<kbits, ebit
             frac = frac << 1;
             exp--;
         }
+            */
     }
 
     // round to nearest

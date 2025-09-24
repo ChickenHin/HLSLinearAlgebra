@@ -4,35 +4,38 @@
 #include <limits>
 #include <string>
 
-#include "../test_floatx_common.h"
+#include "../../test_common.h"
 
 extern "C" void top(double in_a, double in_b, double &out);
 
-int main() {
+int main()
+{
     std::cout << "--- Starting FloatX Substraction Test ---" << std::endl;
-    
+
     int error_count = 0;
     double max_error = 0.0;
 
-    for (int i = 0; i < NUM_TEST_CASES; i++) {
-        double a = FLOATX_TEST_VECTORS[i][0];
-        double b = FLOATX_TEST_VECTORS[i][1];
-        
+    for (int i = 0; i < NUM_TEST_CASES; i++)
+    {
+        double a = TEST_VECTORS[i][0];
+        double b = TEST_VECTORS[i][1];
+
         std::string a_str = format_double(a);
         std::string b_str = format_double(b);
-        
-        std::cout << "\nTest case " << (i+1) << "/" << NUM_TEST_CASES 
+
+        std::cout << "\nTest case " << (i + 1) << "/" << NUM_TEST_CASES
                   << ": " << a_str << " * " << b_str << std::endl;
 
         // Software (golden) result
         double sw_result = a - b;
-        
+
         // Hardware (HLS) result
         double hw_result;
         top(a, b, hw_result);
 
         // Compare results
-        if (check_floatx_error("Substraction", sw_result, hw_result, max_error, a_str, b_str)) {
+        if (check_error("Substraction", sw_result, hw_result, max_error, a_str, b_str))
+        {
             error_count++;
         }
     }

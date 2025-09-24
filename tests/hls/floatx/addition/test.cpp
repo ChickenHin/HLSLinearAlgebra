@@ -4,7 +4,7 @@
 #include <limits>
 #include <string>
 
-#include "../test_floatx_common.h"
+#include "../../test_common.h"
 
 extern "C" void top(double in_a, double in_b, double &out);
 
@@ -17,8 +17,8 @@ int main()
 
     for (int i = 0; i < NUM_TEST_CASES; i++)
     {
-        double a = FLOATX_TEST_VECTORS[i][0];
-        double b = FLOATX_TEST_VECTORS[i][1];
+        double a = TEST_VECTORS[i][0];
+        double b = TEST_VECTORS[i][1];
 
         std::string a_str = format_double(a);
         std::string b_str = format_double(b);
@@ -34,7 +34,7 @@ int main()
         top(a, b, hw_result);
 
         // Compare results
-        if (check_floatx_error("Addition", sw_result, hw_result, max_error, a_str, b_str))
+        if (check_error("Addition", sw_result, hw_result, max_error, a_str, b_str))
         {
             error_count++;
         }
