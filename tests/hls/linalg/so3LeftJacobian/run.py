@@ -23,7 +23,7 @@ def main():
     workspace_path = os.path.join(project_root, "build/vitis_workspace_linalg_so3leftjacobian")
 
     run_vitis(workspace_path, include_path, PART, CLOCK_PERIOD_NS, COMPONENT_NAME,
-              TOP_FUNCTION_NAME, SYNTHESIS_FILE, TESTBENCH_FILE, latency_threshold=500)
+              TOP_FUNCTION_NAME, SYNTHESIS_FILE, TESTBENCH_FILE, 9, 220)
 
 if __name__ == "__main__":
     main()

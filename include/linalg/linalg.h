@@ -36,6 +36,7 @@ namespace linalg
         Mat()
         {
             //            HLS_INLINE
+            /*
         mat_init_loop_r:
             for (int r = 0; r < _rows; r++)
             {
@@ -47,13 +48,16 @@ namespace linalg
                     get_(r, c) = Type(0);
                 }
             }
+            */
         }
 
         // Row major array constructor
         template <typename OtherType>
         Mat(const OtherType _data[_rows * _cols])
         {
-            // #pragma HLS INLINE
+// #pragma HLS INLINE
+//#pragma HLS PIPELINE
+
         mat_const_data_loop_r:
             for (int r = 0; r < _rows; r++)
                 // #pragma HLS UNROLL
@@ -476,7 +480,7 @@ namespace linalg
     public:
         Mat3() : Mat<Type, 3, 3>()
         {
-#pragma HLS ARRAY_PARTITION variable = Mat < Type, 3, 3> ::data_ dim = 1 type = complete
+            // #pragma HLS ARRAY_PARTITION variable = Mat < Type, 3, 3> ::data_ dim = 1 type = complete
         }
 
         Mat3(const Mat<Type, 3, 3> &mat)
@@ -484,7 +488,8 @@ namespace linalg
         {
         }
 
-        Mat3(const Type mat[9])
+        template <class OtherType>
+        Mat3(const OtherType mat[9])
             : Mat<Type, 3, 3>(mat) // call the base-class copy constructor
         {
         }
@@ -518,7 +523,7 @@ namespace linalg
         Mat3<Type> inverse() const
         {
             Mat3<Type> inv;
-            const Mat3<Type> &m = *this;
+            //const Mat3<Type> &m = (*this);
 
             Type det = determinant();
             /*
@@ -530,17 +535,17 @@ namespace linalg
 
             Type invDet = Type(1) / det;
 
-            inv(0, 0) = (m(1, 1) * m(2, 2) - m(1, 2) * m(2, 1)) * invDet;
-            inv(0, 1) = -(m(0, 1) * m(2, 2) - m(0, 2) * m(2, 1)) * invDet;
-            inv(0, 2) = (m(0, 1) * m(1, 2) - m(0, 2) * m(1, 1)) * invDet;
+            inv(0, 0) = ((*this)(1, 1) * (*this)(2, 2) - (*this)(1, 2) * (*this)(2, 1)) * invDet;
+            inv(0, 1) = -((*this)(0, 1) * (*this)(2, 2) - (*this)(0, 2) * (*this)(2, 1)) * invDet;
+            inv(0, 2) = ((*this)(0, 1) * (*this)(1, 2) - (*this)(0, 2) * (*this)(1, 1)) * invDet;
 
-            inv(1, 0) = -(m(1, 0) * m(2, 2) - m(1, 2) * m(2, 0)) * invDet;
-            inv(1, 1) = (m(0, 0) * m(2, 2) - m(0, 2) * m(2, 0)) * invDet;
-            inv(1, 2) = -(m(0, 0) * m(1, 2) - m(0, 2) * m(1, 0)) * invDet;
+            inv(1, 0) = -((*this)(1, 0) * (*this)(2, 2) - (*this)(1, 2) * (*this)(2, 0)) * invDet;
+            inv(1, 1) = ((*this)(0, 0) * (*this)(2, 2) - (*this)(0, 2) * (*this)(2, 0)) * invDet;
+            inv(1, 2) = -((*this)(0, 0) * (*this)(1, 2) - (*this)(0, 2) * (*this)(1, 0)) * invDet;
 
-            inv(2, 0) = (m(1, 0) * m(2, 1) - m(1, 1) * m(2, 0)) * invDet;
-            inv(2, 1) = -(m(0, 0) * m(2, 1) - m(0, 1) * m(2, 0)) * invDet;
-            inv(2, 2) = (m(0, 0) * m(1, 1) - m(0, 1) * m(1, 0)) * invDet;
+            inv(2, 0) = ((*this)(1, 0) * (*this)(2, 1) - (*this)(1, 1) * (*this)(2, 0)) * invDet;
+            inv(2, 1) = -((*this)(0, 0) * (*this)(2, 1) - (*this)(0, 1) * (*this)(2, 0)) * invDet;
+            inv(2, 2) = ((*this)(0, 0) * (*this)(1, 1) - (*this)(0, 1) * (*this)(1, 0)) * invDet;
 
             return inv;
         }

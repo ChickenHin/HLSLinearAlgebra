@@ -25,7 +25,7 @@ def main():
     include_path = os.path.join(project_root, 'include')
     workspace_path = os.path.join(project_root, "build/vitis_workspace_linalg_quaternion")
 
-    run_vitis(workspace_path, include_path, PART, CLOCK_PERIOD_NS, COMPONENT_NAME, TOP_FUNCTION_NAME, SYNTHESIS_FILE, TESTBENCH_FILE, 162)
+    run_vitis(workspace_path, include_path, PART, CLOCK_PERIOD_NS, COMPONENT_NAME, TOP_FUNCTION_NAME, SYNTHESIS_FILE, TESTBENCH_FILE, 9, 162)
 
 if __name__ == "__main__":
     main()

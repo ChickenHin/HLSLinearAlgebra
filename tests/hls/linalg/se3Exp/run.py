@@ -24,7 +24,7 @@ def main():
 
     # Allow generous latency threshold to avoid spurious failures on CI
     run_vitis(workspace_path, include_path, PART, CLOCK_PERIOD_NS, COMPONENT_NAME,
-              TOP_FUNCTION_NAME, SYNTHESIS_FILE, TESTBENCH_FILE, latency_threshold=1000)
+              TOP_FUNCTION_NAME, SYNTHESIS_FILE, TESTBENCH_FILE, 39, 407)
 
 if __name__ == "__main__":
     main()

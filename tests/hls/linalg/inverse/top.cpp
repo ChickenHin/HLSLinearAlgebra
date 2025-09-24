@@ -9,9 +9,9 @@ extern "C" void top(const double in_a[9], double out[9])
 
 #pragma HLS PIPELINE
 
-    linalg::Mat3<double> A(in_a);
+    linalg::Mat3<float> A(in_a);
 
-    linalg::Mat3<double> Ainv = A.inverse();
+    linalg::Mat3<float> Ainv = A.inverse();
 
     // Convert result back to array
     for (int r = 0; r < 3; ++r)
