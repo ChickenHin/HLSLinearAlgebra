@@ -3,4 +3,4 @@
 #add_subdirectory(addition)
 #add_subdirectory(substraction)
 add_subdirectory(multiplication)
-#add_subdirectory(division)
+add_subdirectory(division)

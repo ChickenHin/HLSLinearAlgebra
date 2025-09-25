@@ -524,6 +524,8 @@ posit_unpacked<kbits, ebits, fbits> posit_mult(const posit_unpacked<kbits, ebits
         k++;
     }
 
+    ap_ufixed<fbits * 2, 2> rfrac = round_to(frac, fbits - 1);
+    /*
     // round to nearest
     ap_ufixed<fbits + 1, 2> rfrac = frac;
     if (frac[fbits * 2 - 3 - (fbits - 1)] == 1)
@@ -534,6 +536,7 @@ posit_unpacked<kbits, ebits, fbits> posit_mult(const posit_unpacked<kbits, ebits
         rfrac += one;
         // pmantissa[0] = 1;
     }
+    */
 
     // normalize fraction (again)
     if (rfrac >= 2)
@@ -604,6 +607,9 @@ posit_unpacked<kbits, ebits, fbits> posit_div(const posit_unpacked<kbits, ebits,
     }
     */
 
+    ap_ufixed<fbits + 1, 2> rfrac = round_to(frac, fbits - 1);
+
+    /*
     // round to nearest
     ap_ufixed<fbits + 1, 2> rfrac = frac;
     if (frac[fbits * 2 - 3 - (fbits - 1)] == 1)
@@ -614,6 +620,7 @@ posit_unpacked<kbits, ebits, fbits> posit_div(const posit_unpacked<kbits, ebits,
         rfrac += one;
         // pmantissa[0] = 1;
     }
+    */
 
     // normalize fraction (again)
     if (rfrac >= 2)

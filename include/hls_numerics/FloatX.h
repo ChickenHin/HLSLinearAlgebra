@@ -294,16 +294,38 @@ public:
             exp++;
         }
 
-        if (frac == 0)
+        // round
+        ap_ufixed<frac_size * 2, 2> rfrac = round_to(frac, frac_size - 1);
+
+        // normalize (again)
+        if (rfrac >= 2)
         {
-            exp = 0;
-            frac = 0;
+            rfrac = rfrac >> 1;
+            exp++;
         }
 
+        if (rfrac == 0)
+        {
+            exp = 0;
+            rfrac = 0;
+        }
+
+        /*
+        // round to nearest
+        ap_ufixed<fbits + 1, 2> rfrac = frac;
+        if (frac[fbits * 2 - 3 - (fbits - 1)] == 1)
+        {
+            ap_ufixed<fbits, 1> one = 0;
+            one[0] = 1;
+            // if(pmantissa[0] == 0)
+            rfrac += one;
+            // pmantissa[0] = 1;
+        }
+        */
         unpacked_t out;
         out.sign = sign;
         out.exp = exp;
-        out.frac = frac;
+        out.frac = rfrac;
 
         FloatX output;
         output.encode(out);
@@ -334,7 +356,16 @@ public:
             exp--;
         }
 
-        if (frac == 0)
+        ap_ufixed<frac_size * 2, 2> rfrac = round_to(frac, frac_size - 1);
+
+        // normalize
+        if (rfrac < 1)
+        {
+            rfrac = rfrac << 1;
+            exp--;
+        }
+
+        if (rfrac == 0)
         {
             exp = 0;
             frac = 0;
@@ -343,7 +374,7 @@ public:
         unpacked_t out;
         out.sign = sign;
         out.exp = exp;
-        out.frac = frac;
+        out.frac = rfrac;
 
         FloatX output;
         output.encode(out);

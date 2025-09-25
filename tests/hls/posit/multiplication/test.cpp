@@ -14,6 +14,7 @@ int main()
 
     int error_count = 0;
     double max_error = 0.0;
+    double thresh_error = 3.3e-08;
 
     for (int i = 0; i < NUM_TEST_CASES; i++)
     {
@@ -44,6 +45,9 @@ int main()
     std::cout << "Total test cases: " << NUM_TEST_CASES << std::endl;
     std::cout << "Failed test cases: " << error_count << std::endl;
     std::cout << "Maximum relative error: " << max_error << std::endl;
+
+    if (max_error > thresh_error)
+        return 1;
 
     return (error_count > 0) ? 1 : 0;
 }
