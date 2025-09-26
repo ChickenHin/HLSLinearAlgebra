@@ -1,6 +1,6 @@
-#include "hls_numerics/FloatX.h"
+#include "hls_numerics/Posit.h"
 
-extern "C" void top(float in_a, float &out)
+extern "C" void top(double in_a, double &out)
 {
 #pragma HLS INTERFACE s_axilite port = in_a bundle = control
 #pragma HLS INTERFACE s_axilite port = out bundle = control
@@ -8,6 +8,6 @@ extern "C" void top(float in_a, float &out)
 
 #pragma HLS PIPELINE
 
-    FloatX<32, 8> fx_a(in_a);
-    out = (float)(fx_a);
+    Posit<32, 3> fx_a(in_a);
+    out = (double)(fx_a);
 }

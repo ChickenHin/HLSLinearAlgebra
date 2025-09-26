@@ -82,6 +82,7 @@ public:
     Posit_encode_for:
         for (int i = 0; i < nbits - 1; i++)
         {
+#pragma HLS UNROLL
             if (i < reg_len)
                 bits[reg_start - i] = reg_bit;
         }
@@ -148,6 +149,7 @@ public:
     Posit_decode_for:
         for (int bit = nbits - 3; bit >= 0; bit--)
         {
+#pragma HLS UNROLL
             if (state == K)
             {
                 if (bits[bit] != simbol)
@@ -452,22 +454,9 @@ posit_unpacked<kbits, ebits, fbits> posit_adder(const posit_unpacked<kbits, ebit
             frac = frac >> -shift;
             exp = exp + -shift;
         }
-        /*
-    Posit_add_while_1:
-        while (frac >= 2)
-        {
-            frac = frac >> 1;
-            exp++;
-        }
-
-    Posit_add_while_2:
-        while (frac < 1)
-        {
-            frac = frac << 1;
-            exp--;
-        }
-            */
     }
+
+    // ap_ufixed<fbits + 1, 2> rfrac = round_to(frac, fbits - 1);
 
     // round to nearest
     ap_ufixed<fbits + 1, 2> rfrac = frac;

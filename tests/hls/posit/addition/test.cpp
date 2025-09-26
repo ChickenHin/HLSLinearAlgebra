@@ -10,11 +10,11 @@ extern "C" void top(double in_a, double in_b, double &out);
 
 int main()
 {
-    std::cout << "--- Starting FloatX Addition Test ---" << std::endl;
+    std::cout << "--- Starting Posit Addition Test ---" << std::endl;
 
     int error_count = 0;
     double max_error = 0.0;
-    double thresh_error = 8.9e-08;
+    double thresh_error = 3.5e-08;
 
     for (int i = 0; i < NUM_TEST_CASES; i++)
     {

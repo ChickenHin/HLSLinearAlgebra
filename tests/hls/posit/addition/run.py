@@ -9,7 +9,7 @@ from run_vitis import run_vitis
 # --- Configuration ---
 PART = 'xc7z020clg400-1'
 CLOCK_PERIOD_NS = "10"
-COMPONENT_NAME = "posit_float_hls"
+COMPONENT_NAME = "posit_addition_hls"
 TOP_FUNCTION_NAME = "top"
 SYNTHESIS_FILE = "top.cpp"
 TESTBENCH_FILE = "test.cpp"
@@ -24,7 +24,7 @@ def main():
     include_path = os.path.join(project_root, 'include')
     workspace_path = os.path.join(project_root, "build/" + COMPONENT_NAME)
 
-    run_vitis(workspace_path, include_path, PART, CLOCK_PERIOD_NS, COMPONENT_NAME, TOP_FUNCTION_NAME, SYNTHESIS_FILE, TESTBENCH_FILE, 1, 25)
+    run_vitis(workspace_path, include_path, PART, CLOCK_PERIOD_NS, COMPONENT_NAME, TOP_FUNCTION_NAME, SYNTHESIS_FILE, TESTBENCH_FILE, 1, 65)
 
 if __name__ == "__main__":
     main()
