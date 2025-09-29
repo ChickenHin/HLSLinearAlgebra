@@ -1,5 +1,5 @@
 add_subdirectory(floatx)
-add_subdirectory(posit)
+# add_subdirectory(posit)
 # add_subdirectory(linalg)
 
 # Add custom target for HLS tests
