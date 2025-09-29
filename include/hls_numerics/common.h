@@ -22,6 +22,23 @@ count_leading_simbol_loop:
 }
 
 template <int nbits, int es>
+int count_leading_simbol(ap_ufixed<nbits, es> bits)
+{
+#pragma HLS INLINE
+    int count = 0;
+count_leading_simbol_loop:
+    for (int i = nbits - 1; i >= 0; --i)
+    {
+#pragma HLS UNROLL
+        if (bits[i] == 0)
+            count++;
+        else
+            break;
+    }
+    return count;
+}
+
+template <int nbits, int es>
 int count_leading_simbol(ap_fixed<nbits, es> bits, bool symbol)
 {
 #pragma HLS INLINE

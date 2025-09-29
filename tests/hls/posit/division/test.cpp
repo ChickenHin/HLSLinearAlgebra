@@ -14,6 +14,7 @@ int main()
 
     int error_count = 0;
     double max_error = 0.0;
+    double thresh_error = 2.7e-09;
 
     for (int i = 0; i < NUM_TEST_CASES; i++)
     {
@@ -37,11 +38,23 @@ int main()
         double hw_result;
         top(a, b, hw_result);
 
-        // Compare results
-        if (check_error("Division", sw_result, hw_result, max_error, a_str, b_str))
+        double error = std::fabs(sw_result - hw_result);
+        if (sw_result != 0.0)
+            error = error / sw_result;
+
+        std::cout << "Error: " << error << std::endl;
+
+        if (error > thresh_error)
         {
+            std::cout << "Error too high" << std::endl;
             error_count++;
         }
+
+        // Compare results
+        // if (check_error("Division", sw_result, hw_result, max_error, a_str, b_str))
+        //{
+        //    error_count++;
+        //}
     }
 
     std::cout << "\n--- Division Test Summary ---" << std::endl;

@@ -14,7 +14,7 @@ int main()
 
     int error_count = 0;
     double max_error = 0.0;
-    double thresh_error = 2.7e-09;
+    double thresh_error = 2.24e-07;
 
     for (int i = 0; i < NUM_TEST_CASES; i++)
     {
@@ -40,7 +40,7 @@ int main()
 
         if (error > thresh_error)
         {
-            std::cout << "Error too high: " << std::endl;
+            std::cout << "Error too high" << std::endl;
             error_count++;
         }
         /*

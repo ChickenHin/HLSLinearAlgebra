@@ -42,7 +42,7 @@ int main()
 
         if (error > thresh_error)
         {
-            std::cout << "Error too high: " << std::endl;
+            std::cout << "Error too high" << std::endl;
             error_count++;
         }
         /*

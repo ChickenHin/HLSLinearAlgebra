@@ -10,18 +10,26 @@ template <int ebits, int fbits>
 class FloatXUnpacked
 {
 public:
-    template <int nbits, int es>
-    void decode(const ap_uint<nbits> &bits)
+    template <int in_nbits, int in_ebits>
+    void decode(const ap_uint<in_nbits> &bits)
     {
 #pragma HLS INLINE
-
-        bool sign = bits[nbits - 1];
-        ap_uint<es> exp = bits(nbits - 2, nbits - 1 - es);
-        ap_uint<nbits - 1 - es> frac = bits(nbits - 2 - es, 0);
 
         bool isZero = false;
         if (bits == 0)
             isZero = true;
+
+        bool sign = bits[in_nbits - 1];
+        ap_uint<in_ebits> exp = bits(in_nbits - 2, in_nbits - 1 - in_ebits);
+        ap_ufixed<in_nbits - in_ebits, 1> frac;
+        frac[in_nbits - in_ebits - 1] = 1;
+        frac(in_nbits - in_ebits - 2, 0) = bits(in_nbits - 2 - in_ebits, 0);
+
+        ap_ufixed<in_nbits - in_ebits, 1> rfrac;
+        if (in_nbits - in_ebits - 1 > fbits)
+            rfrac = round_to(frac, fbits - 1);
+        else
+            rfrac = frac;
 
         sign_ = sign;
 
@@ -30,35 +38,42 @@ public:
             exp_ = 0;
         else
             // unpacked.exp = exp - hls::pow(2, es - 1) + 1;
-            exp_ = exp - (1 << (es - 1)) + 1;
+            exp_ = exp - (1 << (in_ebits - 1)) + 1;
 
         // fraction bits
         // add leading 1
         if (isZero)
-            frac_[fbits - 1] = 0;
+            frac_ = 0;
         else
-            frac_[fbits - 1] = 1;
-
-        frac_(fbits - 2, 0) = frac;
+            frac_ = rfrac;
     }
 
-    template <int nbits, int es>
-    ap_uint<nbits> encode() const
+    template <int in_nbits, int in_ebits>
+    ap_uint<in_nbits> encode() const
     {
 #pragma HLS INLINE
 
-        ap_uint<nbits> bits;
+        ap_uint<in_nbits> bits;
 
-        ap_int<es + 1> exp;
+        ap_int<in_ebits + 1> exp;
         if (frac_ == 0)
             exp = 0;
         else
             // exp = unpacked.exp + hls::pow(2, es - 1) - 1;
-            exp = exp_ + (1 << (es - 1)) - 1;
+            exp = exp_ + (1 << (in_ebits - 1)) - 1;
 
-        bits[nbits - 1] = sign_;
-        bits(nbits - 2, nbits - 1 - es) = exp(es - 1, 0);
-        bits(nbits - 2 - es, 0) = frac_(fbits - 2, 0);
+        ap_ufixed<fbits + 1, 1> rfrac;
+        if (fbits > in_nbits - in_ebits - 1)
+            rfrac = round_to(frac_, in_nbits - in_ebits - 2);
+        else
+            rfrac = frac_;
+
+        ap_ufixed<in_nbits - in_ebits, 1> frac;
+        frac = rfrac;
+
+        bits[in_nbits - 1] = sign_;
+        bits(in_nbits - 2, in_nbits - 1 - in_ebits) = exp(in_ebits - 1, 0);
+        bits(in_nbits - 2 - in_ebits, 0) = frac(in_nbits - 2 - in_ebits, 0);
 
         return bits;
     }
@@ -70,8 +85,8 @@ public:
         // set biggest posit to be in1
         ap_int<ebits + 1> diff_texp = exp_ - rhs.exp_;
 
-        ap_fixed<fbits + 1, 2> frac1 = frac_;
-        ap_fixed<fbits + 1, 2> frac2 = rhs.frac_;
+        ap_fixed<fbits + 2, 2> frac1 = frac_;
+        ap_fixed<fbits + 2, 2> frac2 = rhs.frac_;
 
         ap_uint<ebits> exp;
         bool sign;
@@ -100,7 +115,7 @@ public:
         }
 
         // do addition (result is sure to be positive)
-        ap_fixed<fbits + 3, 3> frac = frac1 + frac2;
+        ap_ufixed<fbits + 3, 3> frac = frac1 + frac2;
 
         // normalize
         if (frac == 0)
@@ -109,7 +124,7 @@ public:
         }
         else
         {
-            int shift = count_leading_simbol(frac, 0) - 2;
+            int shift = count_leading_simbol(frac) - 2;
             if (shift > 0)
             {
                 frac = frac << shift;
@@ -122,10 +137,18 @@ public:
             }
         }
 
+        ap_ufixed<fbits + 3, 3> rfrac = round_to(frac, fbits - 1);
+
+        if (rfrac >= 2)
+        {
+            rfrac = rfrac >> 1;
+            exp++;
+        }
+
         FloatXUnpacked out;
         out.sign_ = sign;
         out.exp_ = exp;
-        out.frac_ = frac;
+        out.frac_ = rfrac;
 
         return out;
     }
@@ -136,7 +159,7 @@ public:
 
         bool sign = sign_ ^ rhs.sign_;
         ap_int<ebits + 1> exp = exp_ + rhs.exp_;
-        ap_fixed<fbits * 2, 2> frac = frac_ * rhs.frac_;
+        ap_ufixed<fbits * 2 + 2, 2> frac = frac_ * rhs.frac_;
 
         // normalize
         if (frac >= 2)
@@ -146,7 +169,7 @@ public:
         }
 
         // round
-        ap_ufixed<fbits * 2, 2> rfrac = round_to(frac, fbits - 1);
+        ap_ufixed<fbits * 2 + 2, 2> rfrac = round_to(frac, fbits - 1);
 
         // normalize (again)
         if (rfrac >= 2)
@@ -163,9 +186,9 @@ public:
         */
 
         FloatXUnpacked out;
-        out.sign = sign;
-        out.exp = exp;
-        out.frac = rfrac;
+        out.sign_ = sign;
+        out.exp_ = exp;
+        out.frac_ = rfrac;
 
         return out;
     }
@@ -174,11 +197,11 @@ public:
     {
 #pragma HLS INLINE
 
-        bool sign = sign_ ^ rhs.sign;
+        bool sign = sign_ ^ rhs.sign_;
         ap_int<ebits + 1> exp = exp_ - rhs.exp_;
-        ap_ufixed<fbits * 2, 1> frac1 = frac_;
-        ap_ufixed<fbits * 2, 1> frac2 = rhs.frac_;
-        ap_ufixed<fbits * 2, 1> frac;
+        ap_ufixed<fbits * 2 + 1, 1> frac1 = frac_;
+        ap_ufixed<fbits * 2 + 1, 1> frac2 = rhs.frac_;
+        ap_ufixed<fbits * 2 + 1, 1> frac;
 
         if (rhs.frac_ != 0)
             frac = frac1 / frac2;
@@ -190,7 +213,7 @@ public:
             exp--;
         }
 
-        ap_ufixed<fbits * 2, 2> rfrac = round_to(frac, fbits - 1);
+        ap_ufixed<fbits * 2 + 1, 1> rfrac = round_to(frac, fbits - 1);
 
         // normalize
         if (rfrac < 1)
@@ -206,25 +229,23 @@ public:
         }
 
         FloatXUnpacked out;
-        out.sign = sign;
-        out.exp = exp;
-        out.frac = rfrac;
+        out.sign_ = sign;
+        out.exp_ = exp;
+        out.frac_ = rfrac;
 
         return out;
     }
 
-private:
     bool sign_;
     ap_int<ebits + 1> exp_;
     ap_ufixed<fbits + 1, 1> frac_;
 };
 
-template <int nbits, int es>
+template <int nbits, int ebits>
 class FloatX
 {
 public:
-    static constexpr int exp_size = es;
-    static constexpr int frac_size = nbits - es - 1;
+    static constexpr int fbits = nbits - ebits - 1;
 
     FloatX()
     {
@@ -249,12 +270,10 @@ public:
 #pragma HLS INLINE
 
         ap_uint<32> bits = *reinterpret_cast<ap_uint<32> *>(&c);
-        // unsigned int* bitsPtr = (unsigned int*)&c;
-        // unsigned int bits = *bitsPtr; // Dereference to get the raw bits
 
         FloatXUnpacked<8, 23> unpacked;
         unpacked.template decode<32, 8>(bits);
-        bits_ = unpacked.template encode<nbits, es>();
+        bits_ = unpacked.template encode<nbits, ebits>();
     }
 
     FloatX(double c)
@@ -262,12 +281,10 @@ public:
 #pragma HLS INLINE
 
         ap_uint<64> bits = *reinterpret_cast<ap_uint<64> *>(&c);
-        // unsigned int* bitsPtr = (unsigned int*)&c;
-        // unsigned int bits = *bitsPtr; // Dereference to get the raw bits
 
         FloatXUnpacked<11, 52> unpacked;
         unpacked.template decode<64, 11>(bits);
-        bits_ = unpacked.template encode<nbits, es>();
+        bits_ = unpacked.template encode<nbits, ebits>();
     }
 
     operator float() const
@@ -275,7 +292,7 @@ public:
 #pragma HLS INLINE
 
         FloatXUnpacked<8, 23> unpacked;
-        unpacked.template decode<nbits, es>(bits_);
+        unpacked.template decode<nbits, ebits>(bits_);
         ap_uint<32> bits = unpacked.template encode<32, 8>();
 
         float fresult = *reinterpret_cast<float *>(&bits);
@@ -287,7 +304,7 @@ public:
 #pragma HLS INLINE
 
         FloatXUnpacked<11, 52> unpacked;
-        unpacked.template decode<nbits, es>(bits_);
+        unpacked.template decode<nbits, ebits>(bits_);
         ap_uint<64> bits = unpacked.template encode<64, 11>();
 
         double fresult = *reinterpret_cast<double *>(&bits);
@@ -298,15 +315,15 @@ public:
     {
 #pragma HLS INLINE
 
-        FloatXUnpacked<exp_size, frac_size> in1;
-        in1.template decode<nbits, es>(bits_);
-        FloatXUnpacked<exp_size, frac_size> in2;
-        in2.template decode<nbits, es>(rhs.bits_);
+        FloatXUnpacked<ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        FloatXUnpacked<ebits, fbits> in2;
+        in2.template decode<nbits, ebits>(rhs.bits_);
 
-        FloatXUnpacked<exp_size, frac_size> res = in1 + in2;
+        FloatXUnpacked<ebits, fbits> res = in1 + in2;
 
         FloatX out;
-        out.bits_ = res.template encode<nbits, es>();
+        out.bits_ = res.template encode<nbits, ebits>();
 
         return out;
     }
@@ -325,15 +342,15 @@ public:
     {
 #pragma HLS INLINE
 
-        FloatXUnpacked<exp_size, frac_size> in1;
-        in1.template decode<nbits, es>(bits_);
-        FloatXUnpacked<exp_size, frac_size> in2;
-        in2.template decode<nbits, es>(rhs.bits_);
+        FloatXUnpacked<ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        FloatXUnpacked<ebits, fbits> in2;
+        in2.template decode<nbits, ebits>(rhs.bits_);
 
-        FloatXUnpacked<exp_size, frac_size> res = in1 * in2;
+        FloatXUnpacked<ebits, fbits> res = in1 * in2;
 
         FloatX out;
-        out.bits_ = res.template encode<nbits, es>();
+        out.bits_ = res.template encode<nbits, ebits>();
         return out;
     }
 
@@ -341,15 +358,15 @@ public:
     {
 #pragma HLS INLINE
 
-        FloatXUnpacked<exp_size, frac_size> in1;
-        in1.template decode<nbits, es>(bits_);
-        FloatXUnpacked<exp_size, frac_size> in2;
-        in2.template decode<nbits, es>(rhs.bits_);
+        FloatXUnpacked<ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        FloatXUnpacked<ebits, fbits> in2;
+        in2.template decode<nbits, ebits>(rhs.bits_);
 
-        FloatXUnpacked<exp_size, frac_size> res = in1 / in2;
+        FloatXUnpacked<ebits, fbits> res = in1 / in2;
 
         FloatX out;
-        out.bits_ = res.template encode<nbits, es>();
+        out.bits_ = res.template encode<nbits, ebits>();
 
         return out;
     }
