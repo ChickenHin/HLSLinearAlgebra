@@ -269,7 +269,7 @@ public:
             }
         }
 
-        ap_ufixed<fbits + 4, 3> rfrac = round_to(frac, fbits - 1);
+        ap_ufixed<fbits + 4, 3> rfrac = frac; // round_to(frac, fbits - 1);
 
         // normalize fraction (again)
         if (rfrac >= 2)
@@ -291,7 +291,7 @@ public:
     {
         bool sign = sign_ ^ rhs.sign_;
         int k = k_ + rhs.k_;
-        ap_int<ebits + 1> exp = exp_ + rhs.exp_;
+        ap_int<ebits + 2> exp = exp_ + rhs.exp_;
         ap_ufixed<fbits * 2 + 2, 2> frac = frac_ * rhs.frac_;
 
         // normalize fraction
@@ -430,14 +430,21 @@ public:
         k_ = in_exp / (1 << ebits); // works for negatives too
 
         // New exponent in the allowed range (0, max_exp_val - 1)
-        exp_ = in_exp % (1 << ebits);
+        // exp_ = in_exp % (1 << ebits);
+        exp_ = in_exp - k_ * (1 << ebits);
 
         // If `a` and `b` have opposite signs and the remainder is non-zero,
         // the truncated result is too large; subtract one to get the floor.
+        // if (exp_ < 0)
+        //{
+        //    --k_;
+        // exp = 0;
+        //}
+
         if (exp_ < 0)
         {
             --k_;
-            // exp = 0;
+            exp_ += (1 << ebits);
         }
     }
 
@@ -767,7 +774,10 @@ public:
 
         unpacked.setKEFromTotalExp(floatx_unpacked.exp_);
         unpacked.sign_ = floatx_unpacked.sign_;
-        unpacked.frac_ = floatx_unpacked.frac_; // round_to(floatx_unpacked.frac_, fbits - 1);
+        if (23 > fbits)
+            unpacked.frac_ = round_to(floatx_unpacked.frac_, fbits - 1);
+        else
+            unpacked.frac_ = floatx_unpacked.frac_;
 
         bits_ = unpacked.template encode<nbits, ebits>();
     }
@@ -785,7 +795,10 @@ public:
 
         unpacked.setKEFromTotalExp(floatx_unpacked.exp_);
         unpacked.sign_ = floatx_unpacked.sign_;
-        unpacked.frac_ = floatx_unpacked.frac_; // round_to(floatx_unpacked.frac_, fbits - 1);
+        if (52 > fbits)
+            unpacked.frac_ = round_to(floatx_unpacked.frac_, fbits - 1);
+        else
+            unpacked.frac_ = floatx_unpacked.frac_;
 
         bits_ = unpacked.template encode<nbits, ebits>();
     }
@@ -860,7 +873,11 @@ public:
         FloatXUnpacked<8, 23> floatx_unpacked;
         floatx_unpacked.sign_ = unpacked.sign_;
         floatx_unpacked.exp_ = unpacked.getTotalExp();
-        floatx_unpacked.frac_ = unpacked.frac_;
+
+        if (fbits > 23)
+            floatx_unpacked.frac_ = round_to(unpacked.frac_, 22);
+        else
+            floatx_unpacked.frac_ = unpacked.frac_;
 
         ap_uint<32> bits = floatx_unpacked.template encode<32, 8>();
 
@@ -878,7 +895,11 @@ public:
         FloatXUnpacked<11, 52> floatx_unpacked;
         floatx_unpacked.sign_ = unpacked.sign_;
         floatx_unpacked.exp_ = unpacked.getTotalExp();
-        floatx_unpacked.frac_ = unpacked.frac_;
+
+        if (fbits > 52)
+            floatx_unpacked.frac_ = round_to(unpacked.frac_, 51);
+        else
+            floatx_unpacked.frac_ = unpacked.frac_;
 
         ap_uint<64> bits = floatx_unpacked.template encode<64, 11>();
 

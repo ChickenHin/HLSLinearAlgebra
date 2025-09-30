@@ -14,7 +14,7 @@ int main()
 
     int error_count = 0;
     double max_error = 0.0;
-    double thresh_error = 2.24e-07;
+    double thresh_error = 2.66e-09;
 
     for (int i = 0; i < NUM_TEST_CASES; i++)
     {
