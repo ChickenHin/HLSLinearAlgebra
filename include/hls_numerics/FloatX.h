@@ -13,7 +13,7 @@ public:
     template <int in_nbits, int in_ebits>
     void decode(const ap_uint<in_nbits> &bits)
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         bool isZero = false;
         if (bits == 0)
@@ -51,7 +51,7 @@ public:
     template <int in_nbits, int in_ebits>
     ap_uint<in_nbits> encode() const
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         ap_uint<in_nbits> bits;
 
@@ -80,7 +80,7 @@ public:
 
     FloatXUnpacked operator+(const FloatXUnpacked &rhs) const
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         // set biggest posit to be in1
         ap_int<ebits + 1> diff_texp = exp_ - rhs.exp_;
@@ -118,11 +118,11 @@ public:
         ap_ufixed<fbits + 3, 3> frac = frac1 + frac2;
 
         // normalize
-        //if (frac == 0)
+        // if (frac == 0)
         //{
         //    exp = 0;
         //}
-        //else
+        // else
         {
             int shift = count_leading_simbol(frac) - 2;
             if (shift > 0)
@@ -155,7 +155,7 @@ public:
 
     FloatXUnpacked operator-(const FloatXUnpacked &rhs) const
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         FloatXUnpacked in2 = rhs;
         in2.sign_ = !in2.sign_;
@@ -166,7 +166,7 @@ public:
 
     FloatXUnpacked operator*(const FloatXUnpacked &rhs) const
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         bool sign = sign_ ^ rhs.sign_;
         ap_int<ebits + 2> exp = exp_ + rhs.exp_;
@@ -206,7 +206,7 @@ public:
 
     FloatXUnpacked operator/(const FloatXUnpacked &rhs) const
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         bool sign = sign_ ^ rhs.sign_;
         ap_int<ebits + 1> exp = exp_ - rhs.exp_;
@@ -245,6 +245,16 @@ public:
         return out;
     }
 
+    FloatXUnpacked operator-() const
+    {
+        // #pragma HLS INLINE
+
+        FloatXUnpacked result = *this;
+        result.sign_ = !result.sign_;
+
+        return result;
+    }
+
     bool sign_;
     ap_int<ebits + 1> exp_;
     ap_ufixed<fbits + 1, 1> frac_;
@@ -267,7 +277,7 @@ public:
 
     FloatX &operator=(const FloatX &other)
     {
-        if (this != &other)
+        // if (this != &other)
         {
             bits_ = other.bits_;
         }
@@ -276,7 +286,7 @@ public:
 
     FloatX(float c)
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         ap_uint<32> bits = *reinterpret_cast<ap_uint<32> *>(&c);
 
@@ -287,7 +297,7 @@ public:
 
     FloatX(double c)
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         ap_uint<64> bits = *reinterpret_cast<ap_uint<64> *>(&c);
 
@@ -296,9 +306,16 @@ public:
         bits_ = unpacked.template encode<nbits, ebits>();
     }
 
+    FloatX(const FloatXUnpacked<ebits, fbits> &c)
+    {
+        // #pragma HLS INLINE
+
+        bits_ = c.template encode<nbits, ebits>();
+    }
+
     operator float() const
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         FloatXUnpacked<8, 23> unpacked;
         unpacked.template decode<nbits, ebits>(bits_);
@@ -310,7 +327,7 @@ public:
 
     operator double() const
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         FloatXUnpacked<11, 52> unpacked;
         unpacked.template decode<nbits, ebits>(bits_);
@@ -320,9 +337,65 @@ public:
         return fresult;
     }
 
+    operator FloatXUnpacked<ebits, fbits>() const
+    {
+        // #pragma HLS INLINE
+
+        FloatXUnpacked<ebits, fbits> unpacked;
+        unpacked.template decode<nbits, ebits>(bits_);
+        return unpacked;
+    }
+    /*
+        FloatXUnpacked<ebits, fbits> operator+(const FloatXUnpacked<ebits, fbits> &rhs) const
+        {
+            // #pragma HLS INLINE
+
+            FloatXUnpacked<ebits, fbits> in1;
+            in1.template decode<nbits, ebits>(bits_);
+            FloatXUnpacked<ebits, fbits> res = in1 + rhs;
+            return res;
+        }
+
+        FloatXUnpacked<ebits, fbits> operator-(const FloatXUnpacked<ebits, fbits> &rhs) const
+        {
+            // #pragma HLS INLINE
+
+            FloatXUnpacked<ebits, fbits> in1;
+            in1.template decode<nbits, ebits>(bits_);
+            FloatXUnpacked<ebits, fbits> res = in1 - rhs;
+            return res;
+        }
+
+        FloatXUnpacked<ebits, fbits> operator*(const FloatXUnpacked<ebits, fbits> &rhs) const
+        {
+            // #pragma HLS INLINE
+
+            FloatXUnpacked<ebits, fbits> in1;
+            in1.template decode<nbits, ebits>(bits_);
+            FloatXUnpacked<ebits, fbits> res = in1 * rhs;
+            return res;
+        }
+
+        FloatXUnpacked<ebits, fbits> operator/(const FloatXUnpacked<ebits, fbits> &rhs) const
+        {
+            // #pragma HLS INLINE
+
+            FloatXUnpacked<ebits, fbits> in1;
+            in1.template decode<nbits, ebits>(bits_);
+            FloatXUnpacked<ebits, fbits> res = in1 / rhs;
+            return res;
+        }
+
+        FloatXUnpacked<ebits, fbits> operator-() const
+        {
+            FloatXUnpacked<ebits, fbits> res;
+            return -res;
+        }
+    */
+
     FloatX operator+(const FloatX &rhs) const
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         FloatXUnpacked<ebits, fbits> in1;
         in1.template decode<nbits, ebits>(bits_);
@@ -339,7 +412,7 @@ public:
 
     FloatX operator-(const FloatX &rhs) const
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         FloatXUnpacked<ebits, fbits> in1;
         in1.template decode<nbits, ebits>(bits_);
@@ -356,7 +429,7 @@ public:
 
     FloatX operator*(const FloatX &rhs) const
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         FloatXUnpacked<ebits, fbits> in1;
         in1.template decode<nbits, ebits>(bits_);
@@ -372,7 +445,7 @@ public:
 
     FloatX operator/(const FloatX &rhs) const
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
 
         FloatXUnpacked<ebits, fbits> in1;
         in1.template decode<nbits, ebits>(bits_);
@@ -385,6 +458,17 @@ public:
         out.bits_ = res.template encode<nbits, ebits>();
 
         return out;
+    }
+
+    FloatX operator-() const
+    {
+
+        ap_int<nbits> bits = bits_;
+        if (bits != 0)
+            bits[nbits - 1] = !bits[nbits - 1];
+        FloatX result;
+        result.bits_ = bits;
+        return result;
     }
 
 private:
