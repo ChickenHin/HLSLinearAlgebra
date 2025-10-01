@@ -502,21 +502,22 @@ namespace linalg
             // #pragma HLS INLINE
             //  #pragma HLS PIPELINE
             // const auto &m = *this;
-            //  return m(0, 0) * (m(1, 1) * m(2, 2) - m(1, 2) * m(2, 1)) - m(0, 1) * (m(1, 0) * m(2, 2) - m(1, 2) * m(2, 0)) + m(0, 2) * (m(1, 0) * m(2, 1) - m(1, 1) * m(2, 0));
-            Type aux1 = (*this)(0, 0) * ((*this)(1, 1) * (*this)(2, 2) - (*this)(1, 2) * (*this)(2, 1));
-            // Type aux1_1 = (*this)(1, 1) * (*this)(2, 2);
-            // Type aux1_2 = (*this)(1, 2) * (*this)(2, 1);
-            // Type aux1 = (*this)(0, 0) * (aux1_1 - aux1_2);
-            Type aux2 = -(*this)(0, 1) * ((*this)(1, 0) * (*this)(2, 2) - (*this)(1, 2) * (*this)(2, 0));
-            // Type aux2_1 = (*this)(1, 0) * (*this)(2, 2);
-            // Type aux2_2 = (*this)(1, 2) * (*this)(2, 0);
-            // Type aux2 = -(*this)(0, 1) * (aux2_1 - aux2_2);
-            Type aux3 = (*this)(0, 2) * ((*this)(1, 0) * (*this)(2, 1) - (*this)(1, 1) * (*this)(2, 0));
-            // Type aux3_1 = (*this)(1, 0) * (*this)(2, 1);
-            // Type aux3_2 = (*this)(1, 1) * (*this)(2, 0);
-            // Type aux3 = (*this)(0, 2) * (aux3_1 - aux3_2);
+            Type result = (*this)(0, 0) * ((*this)(1, 1) * (*this)(2, 2) - (*this)(1, 2) * (*this)(2, 1)) - (*this)(0, 1) * ((*this)(1, 0) * (*this)(2, 2) - (*this)(1, 2) * (*this)(2, 0)) + (*this)(0, 2) * ((*this)(1, 0) * (*this)(2, 1) - (*this)(1, 1) * (*this)(2, 0));
+            return result;
+            // Type aux1 = (*this)(0, 0) * ((*this)(1, 1) * (*this)(2, 2) - (*this)(1, 2) * (*this)(2, 1));
+            //  Type aux1_1 = (*this)(1, 1) * (*this)(2, 2);
+            //  Type aux1_2 = (*this)(1, 2) * (*this)(2, 1);
+            //  Type aux1 = (*this)(0, 0) * (aux1_1 - aux1_2);
+            // Type aux2 = -(*this)(0, 1) * ((*this)(1, 0) * (*this)(2, 2) - (*this)(1, 2) * (*this)(2, 0));
+            //  Type aux2_1 = (*this)(1, 0) * (*this)(2, 2);
+            //  Type aux2_2 = (*this)(1, 2) * (*this)(2, 0);
+            //  Type aux2 = -(*this)(0, 1) * (aux2_1 - aux2_2);
+            // Type aux3 = (*this)(0, 2) * ((*this)(1, 0) * (*this)(2, 1) - (*this)(1, 1) * (*this)(2, 0));
+            //  Type aux3_1 = (*this)(1, 0) * (*this)(2, 1);
+            //  Type aux3_2 = (*this)(1, 1) * (*this)(2, 0);
+            //  Type aux3 = (*this)(0, 2) * (aux3_1 - aux3_2);
 
-            return aux1 + aux2 + aux3;
+            // return aux1 + aux2 + aux3;
         }
 
         // Inverse of 3×3

@@ -345,53 +345,53 @@ public:
         unpacked.template decode<nbits, ebits>(bits_);
         return unpacked;
     }
+
+    FloatXUnpacked<ebits, fbits> operator+(const FloatXUnpacked<ebits, fbits> &rhs) const
+    {
+        // #pragma HLS INLINE
+
+        FloatXUnpacked<ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        FloatXUnpacked<ebits, fbits> res = in1 + rhs;
+        return res;
+    }
+
+    FloatXUnpacked<ebits, fbits> operator-(const FloatXUnpacked<ebits, fbits> &rhs) const
+    {
+        // #pragma HLS INLINE
+
+        FloatXUnpacked<ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        FloatXUnpacked<ebits, fbits> res = in1 - rhs;
+        return res;
+    }
+
+    FloatXUnpacked<ebits, fbits> operator*(const FloatXUnpacked<ebits, fbits> &rhs) const
+    {
+        // #pragma HLS INLINE
+
+        FloatXUnpacked<ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        FloatXUnpacked<ebits, fbits> res = in1 * rhs;
+        return res;
+    }
+
+    FloatXUnpacked<ebits, fbits> operator/(const FloatXUnpacked<ebits, fbits> &rhs) const
+    {
+        // #pragma HLS INLINE
+
+        FloatXUnpacked<ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        FloatXUnpacked<ebits, fbits> res = in1 / rhs;
+        return res;
+    }
+
+    FloatXUnpacked<ebits, fbits> operator-() const
+    {
+        FloatXUnpacked<ebits, fbits> res;
+        return -res;
+    }
     /*
-        FloatXUnpacked<ebits, fbits> operator+(const FloatXUnpacked<ebits, fbits> &rhs) const
-        {
-            // #pragma HLS INLINE
-
-            FloatXUnpacked<ebits, fbits> in1;
-            in1.template decode<nbits, ebits>(bits_);
-            FloatXUnpacked<ebits, fbits> res = in1 + rhs;
-            return res;
-        }
-
-        FloatXUnpacked<ebits, fbits> operator-(const FloatXUnpacked<ebits, fbits> &rhs) const
-        {
-            // #pragma HLS INLINE
-
-            FloatXUnpacked<ebits, fbits> in1;
-            in1.template decode<nbits, ebits>(bits_);
-            FloatXUnpacked<ebits, fbits> res = in1 - rhs;
-            return res;
-        }
-
-        FloatXUnpacked<ebits, fbits> operator*(const FloatXUnpacked<ebits, fbits> &rhs) const
-        {
-            // #pragma HLS INLINE
-
-            FloatXUnpacked<ebits, fbits> in1;
-            in1.template decode<nbits, ebits>(bits_);
-            FloatXUnpacked<ebits, fbits> res = in1 * rhs;
-            return res;
-        }
-
-        FloatXUnpacked<ebits, fbits> operator/(const FloatXUnpacked<ebits, fbits> &rhs) const
-        {
-            // #pragma HLS INLINE
-
-            FloatXUnpacked<ebits, fbits> in1;
-            in1.template decode<nbits, ebits>(bits_);
-            FloatXUnpacked<ebits, fbits> res = in1 / rhs;
-            return res;
-        }
-
-        FloatXUnpacked<ebits, fbits> operator-() const
-        {
-            FloatXUnpacked<ebits, fbits> res;
-            return -res;
-        }
-    */
 
     FloatX operator+(const FloatX &rhs) const
     {
@@ -470,7 +470,7 @@ public:
         result.bits_ = bits;
         return result;
     }
-
+        */
 private:
     ap_uint<nbits> bits_;
 };
