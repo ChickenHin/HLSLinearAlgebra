@@ -314,7 +314,7 @@ public:
     posit_unpacked operator*(const posit_unpacked &rhs) const
     {
         bool sign = sign_ ^ rhs.sign_;
-        int k = k_ + rhs.k_;
+        ap_int<kbits> k = k_ + rhs.k_;
         ap_int<ebits + 2> exp = exp_ + rhs.exp_;
         ap_ufixed<fbits * 2 + 2, 2> frac = frac_ * rhs.frac_;
 
@@ -360,8 +360,8 @@ public:
     posit_unpacked operator/(const posit_unpacked &rhs) const
     {
         bool sign;
-        int k;
-        int exp;
+        ap_int<kbits> k;
+        ap_int<ebits + 1> exp;
         ap_ufixed<fbits * 2, 2> frac;
 
         // set inf
@@ -479,7 +479,7 @@ public:
     // the max amount of bits for r is nbits-1 bits, nbits-2 bits beeing 0 (or 1), and the last beeing 1 (or 0)
     // k is the amount of counted bits
     // which can be stored in log2(nbits - 2) bits
-    int k_;
+    ap_int<kbits> k_;
     ap_uint<ebits> exp_;
     // the max amount of bits for frac is nbits - 1 (sign) - 2 (min bits for k) - es;
     ap_ufixed<fbits + 1, 1> frac_;
