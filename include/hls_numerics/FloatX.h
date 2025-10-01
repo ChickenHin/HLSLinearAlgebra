@@ -157,8 +157,10 @@ public:
     {
         // #pragma HLS INLINE
 
-        FloatXUnpacked in2 = rhs;
-        in2.sign_ = !in2.sign_;
+        FloatXUnpacked in2;
+        in2.sign_ = !rhs.sign_;
+        in2.exp_ = rhs.exp_;
+        in2.frac_ = rhs.frac_;
 
         FloatXUnpacked result = (*this) + in2;
         return result;
@@ -249,8 +251,10 @@ public:
     {
         // #pragma HLS INLINE
 
-        FloatXUnpacked result = *this;
-        result.sign_ = !result.sign_;
+        FloatXUnpacked result;
+        result.sign_ = !sign_;
+        result.exp_ = exp_;
+        result.frac_ = frac_;
 
         return result;
     }
@@ -345,7 +349,7 @@ public:
         unpacked.template decode<nbits, ebits>(bits_);
         return unpacked;
     }
-
+    
     FloatXUnpacked<ebits, fbits> operator+(const FloatXUnpacked<ebits, fbits> &rhs) const
     {
         // #pragma HLS INLINE
@@ -391,8 +395,8 @@ public:
         FloatXUnpacked<ebits, fbits> res;
         return -res;
     }
+    
     /*
-
     FloatX operator+(const FloatX &rhs) const
     {
         // #pragma HLS INLINE
@@ -462,15 +466,13 @@ public:
 
     FloatX operator-() const
     {
-
-        ap_int<nbits> bits = bits_;
-        if (bits != 0)
-            bits[nbits - 1] = !bits[nbits - 1];
         FloatX result;
-        result.bits_ = bits;
+        results.bits_ = bits_;
+        if (bits_ != 0)
+            bits_[nbits - 1] = !bits_[nbits - 1];
         return result;
     }
-        */
+    */
 private:
     ap_uint<nbits> bits_;
 };

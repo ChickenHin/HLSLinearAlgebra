@@ -1,4 +1,6 @@
 #include "linalg/linalg.h"
+#include "hls_numerics/FloatX.h"
+#include "hls_numerics/Posit.h"
 
 extern "C" void top(const double in_a[9], double out[9])
 {
@@ -7,18 +9,22 @@ extern "C" void top(const double in_a[9], double out[9])
 #pragma HLS INTERFACE s_axilite port = out bundle = control
 #pragma HLS INTERFACE s_axilite port = return bundle = control
 
-#pragma HLS PIPELINE
+    // #pragma HLS PIPELINE
+    //  #pragma HLS DATAFLOW
 
-    linalg::Mat3<float> A(in_a);
+    linalg::Mat3<Posit<32, 3>> A(in_a);
 
-    linalg::Mat3<float> Ainv = A.inverse();
+    linalg::Mat3<Posit<32, 3>> Ainv = A.inverse();
 
-    // Convert result back to array
+// Convert result back to array
+copy_mat_loop_1:
     for (int r = 0; r < 3; ++r)
     {
+    copy_map_loop_2:
         for (int c = 0; c < 3; ++c)
         {
-            out[r * 3 + c] = Ainv(r, c);
+#pragma HLS UNROLL
+            out[r * 3 + c] = (double)Ainv(r, c);
         }
     }
 }

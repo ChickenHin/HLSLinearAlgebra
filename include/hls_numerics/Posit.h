@@ -225,7 +225,7 @@ public:
             int dist = last_state_bit - bit;
             if (state == K)
             {
-                //ap_int<kbits> lenght = last_state_bit - bit;
+                // ap_int<kbits> lenght = last_state_bit - bit;
 
                 if (dist == reg_len)
                 {
@@ -609,6 +609,19 @@ public:
         out.frac_ = rfrac;
 
         return out;
+    }
+
+    posit_unpacked operator-() const
+    {
+        // #pragma HLS INLINE
+
+        posit_unpacked result;
+        result.sign_ = !sign_;
+        result.exp_ = exp_;
+        result.k_ = k_;
+        result.frac_ = frac_;
+
+        return result;
     }
 
     int getTotalExp() const
@@ -1005,6 +1018,13 @@ public:
         bits_ = unpacked.template encode<nbits, ebits>();
     }
 
+    Posit(const posit_unpacked<kbits, ebits, fbits> &c)
+    {
+        // #pragma HLS INLINE
+
+        bits_ = c.template encode<nbits, ebits>();
+    }
+
     template <int fnbits, int fibits>
     Posit(ap_fixed<fnbits, fibits> c)
     {
@@ -1109,6 +1129,15 @@ public:
         return fresult;
     }
 
+    operator posit_unpacked<kbits, ebits, fbits>() const
+    {
+        // #pragma HLS INLINE
+
+        posit_unpacked<kbits, ebits, fbits> unpacked;
+        unpacked.template decode<nbits, ebits>(bits_);
+        return unpacked;
+    }
+
     template <int fnbits, int fibits>
     operator ap_fixed<fnbits, fibits>() const
     {
@@ -1132,7 +1161,7 @@ public:
             return res;
         }
     }
-
+    /*
     Posit operator-() const
     {
         posit_unpacked<kbits, ebits, fbits> in1;
@@ -1253,7 +1282,53 @@ public:
         else
             return false;
     }
+    */
 
+    posit_unpacked<kbits, ebits, fbits> operator+(const posit_unpacked<kbits, ebits, fbits> &rhs) const
+    {
+        // #pragma HLS INLINE
+
+        posit_unpacked<kbits, ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        posit_unpacked<kbits, ebits, fbits> out = in1 + rhs;
+
+        return out;
+    }
+
+    posit_unpacked<kbits, ebits, fbits> operator-(const posit_unpacked<kbits, ebits, fbits> &rhs) const
+    {
+        // #pragma HLS INLINE
+
+        posit_unpacked<kbits, ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        posit_unpacked<kbits, ebits, fbits> out = in1 - rhs;
+
+        return out;
+    }
+
+    posit_unpacked<kbits, ebits, fbits> operator*(const posit_unpacked<kbits, ebits, fbits> &rhs) const
+    {
+        // #pragma HLS INLINE
+
+        posit_unpacked<kbits, ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        posit_unpacked<kbits, ebits, fbits> out = in1 * rhs;
+
+        return out;
+    }
+
+    posit_unpacked<kbits, ebits, fbits> operator/(const posit_unpacked<kbits, ebits, fbits> &rhs) const
+    {
+        // #pragma HLS INLINE
+
+        posit_unpacked<kbits, ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        posit_unpacked<kbits, ebits, fbits> out = in1 / rhs;
+
+        return out;
+    }
+
+    /*
     Posit operator+(const Posit &rhs) const
     {
         // #pragma HLS INLINE
@@ -1357,6 +1432,7 @@ public:
         result.bits_ = out.template encode<nbits, ebits>();
         return result;
     }
+    */
 
 private:
     ap_uint<nbits> bits_;

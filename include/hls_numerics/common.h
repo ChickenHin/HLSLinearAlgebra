@@ -7,7 +7,7 @@
 template <int nbits>
 int count_leading_simbol(ap_uint<nbits> bits, bool symbol)
 {
-#pragma HLS INLINE
+    // #pragma HLS INLINE
     int count = 0;
 count_leading_simbol_loop:
     for (int i = nbits - 1; i >= 0; --i)
@@ -24,7 +24,7 @@ count_leading_simbol_loop:
 template <int nbits, int es>
 int count_leading_simbol(ap_ufixed<nbits, es> bits)
 {
-#pragma HLS INLINE
+    // #pragma HLS INLINE
     int count = 0;
 count_leading_simbol_loop:
     for (int i = nbits - 1; i >= 0; --i)
@@ -41,7 +41,7 @@ count_leading_simbol_loop:
 template <int nbits, int es>
 int count_leading_simbol(ap_fixed<nbits, es> bits, bool symbol)
 {
-#pragma HLS INLINE
+    // #pragma HLS INLINE
     int count = 0;
 count_leading_simbol_loop:
     for (int i = nbits - 1; i >= 0; --i)
@@ -58,6 +58,8 @@ count_leading_simbol_loop:
 template <int fbits, int ibits>
 ap_ufixed<fbits, ibits> round_to(const ap_ufixed<fbits, ibits> &val, int frac_bit)
 {
+    // #pragma HLS INLINE
+
     int first_frac_bit = fbits - 1 - ibits;
 
     ap_ufixed<fbits, ibits> rval = val;
