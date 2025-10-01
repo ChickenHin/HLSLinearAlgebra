@@ -194,69 +194,55 @@ public:
 
     posit_unpacked operator+(const posit_unpacked &rhs) const
     {
-        int exp1 = getTotalExp();
-        int exp2 = rhs.getTotalExp();
+        // int exp1 = getTotalExp();
+        // int exp2 = rhs.getTotalExp();
 
         // set biggest posit to be in1
-        int diff_texp = exp1 - exp2;
+        // int diff_texp = exp1 - exp2;
 
-        ap_fixed<fbits + 2, 2> frac1;
-        ap_fixed<fbits + 2, 2> frac2;
-        int exp;
+        ap_int<kbits + ebits> diff_texp = (k_ - rhs.k_) * (1 << ebits) + exp_ - rhs.exp_;
 
-        if (diff_texp > 0)
-        {
-            if (!sign_)
-                frac1 = frac_;
-            else
-                frac1 = -frac_;
-            if (!rhs.sign_)
-                frac2 = rhs.frac_;
-            else
-                frac2 = -rhs.frac_;
-            exp = exp1;
-        }
-        else
-        {
-            if (!rhs.sign_)
-                frac1 = rhs.frac_;
-            else
-                frac1 = -rhs.frac_;
-            if (!sign_)
-                frac2 = frac_;
-            else
-                frac2 = -frac_;
-            exp = exp2;
+        ap_fixed<fbits + 2, 2> frac1 = frac_;
+        ap_fixed<fbits + 2, 2> frac2 = rhs.frac_;
 
-            diff_texp = -diff_texp;
-        }
-
-        // shift left in2, so that both have the same exponent
-        // for (int i = 0; i < diff_texp; i++)
-        //    frac2 = frac2 >> 1;
-        frac2 = frac2 >> diff_texp;
-
-        // do addition
-        ap_fixed<fbits + 4, 3> frac = frac1 + frac2;
-
-        // get sign and remove sign from frac
+        ap_int<ebits + 2> exp;
+        ap_int<kbits> k;
         bool sign;
 
-        if (frac < 0)
+        if (diff_texp >= 0)
         {
-            frac = -frac;
-            sign = 1;
+            sign = sign_;
+            exp = exp_;
+            k = k_;
+
+            frac2 = frac2 >> diff_texp;
+
+            if (sign_ != rhs.sign_)
+                frac2 = -frac2;
         }
         else
         {
-            // frac = frac;
-            sign = 0;
+            sign = rhs.sign_;
+            exp = rhs.exp_;
+            k = rhs.k_;
+
+            frac1 = frac1 >> -diff_texp;
+
+            if (sign_ != rhs.sign_)
+                frac1 = -frac1;
         }
 
+        // do addition (always positive)
+        ap_ufixed<fbits + 3, 3> frac = frac1 + frac2;
+
         // normalize
-        if (frac > 0)
+        // if (frac == 0)
+        //{
+        //    exp = 0;
+        //}
+        // else
         {
-            int shift = count_leading_simbol(frac, 0) - 2;
+            int shift = count_leading_simbol(frac) - 2;
             if (shift > 0)
             {
                 frac = frac << shift;
@@ -269,7 +255,20 @@ public:
             }
         }
 
-        ap_ufixed<fbits + 4, 3> rfrac = frac; // round_to(frac, fbits - 1);
+        // normalize exponent
+        if (exp >= (1 << ebits))
+        {
+            exp -= (1 << ebits);
+            k++;
+        }
+
+        if (exp < 0)
+        {
+            exp += (1 << ebits);
+            k--;
+        }
+
+        ap_ufixed<fbits + 3, 3> rfrac = round_to(frac, fbits - 1);
 
         // normalize fraction (again)
         if (rfrac >= 2)
@@ -278,11 +277,36 @@ public:
             exp++;
         }
 
+        // normalize exponent
+        if (exp >= (1 << ebits))
+        {
+            exp -= (1 << ebits);
+            k++;
+        }
+
+        if (exp < 0)
+        {
+            exp += (1 << ebits);
+            k--;
+        }
+
         posit_unpacked out;
 
-        out.setKEFromTotalExp(exp);
+        // out.setKEFromTotalExp(exp);
         out.sign_ = sign;
+        out.k_ = k;
+        out.exp_ = exp;
         out.frac_ = rfrac;
+
+        return out;
+    }
+
+    posit_unpacked operator-(const posit_unpacked &rhs) const
+    {
+        posit_unpacked in2 = rhs;
+        in2.sign_ = !in2.sign_;
+
+        posit_unpacked out = (*this) + in2;
 
         return out;
     }
@@ -427,11 +451,11 @@ public:
     {
         // get k and e from floating point exponent
         // How many times each exponent over - or under - flowed the valid interval
-        k_ = in_exp / (1 << ebits); // works for negatives too
+        int k = in_exp / (1 << ebits); // works for negatives too
 
         // New exponent in the allowed range (0, max_exp_val - 1)
         // exp_ = in_exp % (1 << ebits);
-        exp_ = in_exp - k_ * (1 << ebits);
+        ap_int<ebits + 1> exp = in_exp - k * (1 << ebits);
 
         // If `a` and `b` have opposite signs and the remainder is non-zero,
         // the truncated result is too large; subtract one to get the floor.
@@ -441,11 +465,14 @@ public:
         // exp = 0;
         //}
 
-        if (exp_ < 0)
+        if (exp < 0)
         {
-            --k_;
-            exp_ += (1 << ebits);
+            --k;
+            exp += (1 << ebits);
         }
+
+        k_ = k;
+        exp_ = exp;
     }
 
     bool sign_;
@@ -453,7 +480,7 @@ public:
     // k is the amount of counted bits
     // which can be stored in log2(nbits - 2) bits
     int k_;
-    ap_int<ebits + 1> exp_;
+    ap_uint<ebits> exp_;
     // the max amount of bits for frac is nbits - 1 (sign) - 2 (min bits for k) - es;
     ap_ufixed<fbits + 1, 1> frac_;
 
@@ -1071,8 +1098,6 @@ public:
         posit_unpacked<kbits, ebits, fbits> in1, in2;
         in1.template decode<nbits, ebits>(bits_);
         in2.template decode<nbits, ebits>(rhs.bits_);
-
-        in2.sign = !in2.sign;
 
         posit_unpacked<kbits, ebits, fbits> out = in1 - in2;
 

@@ -10,29 +10,25 @@ extern "C" void top(double in_a, double in_b, double &out);
 
 int main()
 {
-    std::cout << "--- Starting FloatX Division Test ---" << std::endl;
+    std::cout << "--- Starting Posit Substraction Test ---" << std::endl;
 
     int error_count = 0;
     double max_error = 0.0;
-    double thresh_error = 7.0e-08;
+    double thresh_error = 3.5e-08;
 
     for (int i = 0; i < NUM_TEST_CASES; i++)
     {
         double a = TEST_VECTORS[i][0];
         double b = TEST_VECTORS[i][1];
 
-        // Skip division by zero cases in the main test loop
-        if (b == 0.0)
-            continue;
-
         std::string a_str = format_double(a);
         std::string b_str = format_double(b);
 
         std::cout << "\nTest case " << (i + 1) << "/" << NUM_TEST_CASES
-                  << ": " << a_str << " / " << b_str << std::endl;
+                  << ": " << a_str << " * " << b_str << std::endl;
 
         // Software (golden) result
-        double sw_result = a / b;
+        double sw_result = a - b;
 
         // Hardware (HLS) result
         double hw_result;
@@ -51,14 +47,14 @@ int main()
         }
 
         // Compare results
-        // if (check_error("Division", sw_result, hw_result, max_error, a_str, b_str))
+        // if (check_error("Substraction", sw_result, hw_result, max_error, a_str, b_str))
         //{
         //    error_count++;
         //}
     }
 
-    std::cout << "\n--- Division Test Summary ---" << std::endl;
-    std::cout << "Total test cases: " << (NUM_TEST_CASES - 1) << std::endl; // -1 for the division by zero case
+    std::cout << "\n--- Substraction Test Summary ---" << std::endl;
+    std::cout << "Total test cases: " << NUM_TEST_CASES << std::endl;
     std::cout << "Failed test cases: " << error_count << std::endl;
     std::cout << "Maximum relative error: " << max_error << std::endl;
 

@@ -88,7 +88,7 @@ public:
         ap_fixed<fbits + 2, 2> frac1 = frac_;
         ap_fixed<fbits + 2, 2> frac2 = rhs.frac_;
 
-        ap_uint<ebits> exp;
+        ap_uint<ebits + 1> exp;
         bool sign;
 
         if (diff_texp >= 0)
@@ -118,11 +118,11 @@ public:
         ap_ufixed<fbits + 3, 3> frac = frac1 + frac2;
 
         // normalize
-        if (frac == 0)
-        {
-            exp = 0;
-        }
-        else
+        //if (frac == 0)
+        //{
+        //    exp = 0;
+        //}
+        //else
         {
             int shift = count_leading_simbol(frac) - 2;
             if (shift > 0)
@@ -153,12 +153,23 @@ public:
         return out;
     }
 
+    FloatXUnpacked operator-(const FloatXUnpacked &rhs) const
+    {
+#pragma HLS INLINE
+
+        FloatXUnpacked in2 = rhs;
+        in2.sign_ = !in2.sign_;
+
+        FloatXUnpacked result = (*this) + in2;
+        return result;
+    }
+
     FloatXUnpacked operator*(const FloatXUnpacked &rhs) const
     {
 #pragma HLS INLINE
 
         bool sign = sign_ ^ rhs.sign_;
-        ap_int<ebits + 1> exp = exp_ + rhs.exp_;
+        ap_int<ebits + 2> exp = exp_ + rhs.exp_;
         ap_ufixed<fbits * 2 + 2, 2> frac = frac_ * rhs.frac_;
 
         // normalize
@@ -199,12 +210,10 @@ public:
 
         bool sign = sign_ ^ rhs.sign_;
         ap_int<ebits + 1> exp = exp_ - rhs.exp_;
-        ap_ufixed<fbits * 2 + 1, 1> frac1 = frac_;
-        ap_ufixed<fbits * 2 + 1, 1> frac2 = rhs.frac_;
-        ap_ufixed<fbits * 2 + 1, 1> frac;
+        ap_ufixed<fbits * 2 + 1, 1> frac = 0;
 
         if (rhs.frac_ != 0)
-            frac = frac1 / frac2;
+            frac = frac_ / rhs.frac_;
 
         // normalize
         if (frac < 1)
@@ -332,10 +341,17 @@ public:
     {
 #pragma HLS INLINE
 
-        FloatX neg = rhs;
-        neg.bits_[nbits - 1] = !neg.bits_[nbits - 1];
-        FloatX result = (*this) + neg;
-        return result;
+        FloatXUnpacked<ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+        FloatXUnpacked<ebits, fbits> in2;
+        in2.template decode<nbits, ebits>(rhs.bits_);
+
+        FloatXUnpacked<ebits, fbits> res = in1 - in2;
+
+        FloatX out;
+        out.bits_ = res.template encode<nbits, ebits>();
+
+        return out;
     }
 
     FloatX operator*(const FloatX &rhs) const

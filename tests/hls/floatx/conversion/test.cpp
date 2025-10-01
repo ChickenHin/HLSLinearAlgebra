@@ -14,7 +14,7 @@ int main()
 
     int error_count = 0;
     double max_error = 0.0;
-    double thresh_error = 1.2e-07;
+    double thresh_error = 5.15e-08;
 
     for (int i = 0; i < NUM_TEST_CASES; i++)
     {
@@ -34,7 +34,7 @@ int main()
 
         double error = std::fabs(sw_result - hw_result);
         if (sw_result != 0.0)
-            error = error / sw_result;
+            error = error / std::fabs(sw_result);
 
         std::cout << "Error: " << error << std::endl;
 

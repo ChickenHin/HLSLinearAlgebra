@@ -1,4 +1,4 @@
-# add_subdirectory(floatx)
+add_subdirectory(floatx)
 add_subdirectory(posit)
 # add_subdirectory(linalg)
 

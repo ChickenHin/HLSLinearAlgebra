@@ -25,7 +25,7 @@ int main()
         std::string b_str = format_double(b);
 
         std::cout << "\nTest case " << (i + 1) << "/" << NUM_TEST_CASES
-                  << ": " << a_str << " * " << b_str << std::endl;
+                  << ": " << a_str << " - " << b_str << std::endl;
 
         // Software (golden) result
         double sw_result = a - b;
@@ -36,7 +36,7 @@ int main()
 
         double error = std::fabs(sw_result - hw_result);
         if (sw_result != 0.0)
-            error = error / sw_result;
+            error = error / std::fabs(sw_result);
 
         std::cout << "Error: " << error << std::endl;
 
