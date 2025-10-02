@@ -530,26 +530,35 @@ namespace linalg
         // 3×3 determinant
         Type determinant() const
         {
+#pragma HLS allocation operation instances = add limit = 1
+#pragma HLS allocation operation instances = sub limit = 1
+#pragma HLS allocation operation instances = mul limit = 1
+#pragma HLS allocation operation instances = div limit = 1
+#pragma HLS allocation operation instances = fadd limit = 1
+#pragma HLS allocation operation instances = fsub limit = 1
+#pragma HLS allocation operation instances = fmul limit = 1
+#pragma HLS allocation operation instances = fdiv limit = 1
+
             // HLS_INLINE
             //  HLS_PIPELINE
             // #pragma HLS INLINE
-            //  #pragma HLS PIPELINE
+            // #pragma HLS PIPELINE II = 1
             Type result = (*this)(0, 0) * ((*this)(1, 1) * (*this)(2, 2) - (*this)(1, 2) * (*this)(2, 1)) + (*this)(0, 1) * ((*this)(1, 2) * (*this)(2, 0) - (*this)(1, 0) * (*this)(2, 2)) + (*this)(0, 2) * ((*this)(1, 0) * (*this)(2, 1) - (*this)(1, 1) * (*this)(2, 0));
             // Type aux1 = (*this)(0, 0) * ((*this)(1, 1) * (*this)(2, 2) - (*this)(1, 2) * (*this)(2, 1));
-            //  Type aux1_1 = (*this)(1, 1) * (*this)(2, 2);
-            //  Type aux1_2 = (*this)(1, 2) * (*this)(2, 1);
-            //  Type aux1_3 = aux1_1 - aux1_2;
-            //  Type aux1 = (*this)(0, 0) * aux1_3;
+            // Type aux1_1 = (*this)(1, 1) * (*this)(2, 2);
+            // Type aux1_2 = (*this)(1, 2) * (*this)(2, 1);
+            // Type aux1_3 = aux1_1 - aux1_2;
+            // Type aux1 = (*this)(0, 0) * aux1_3;
             // Type aux2 = -(*this)(0, 1) * ((*this)(1, 0) * (*this)(2, 2) - (*this)(1, 2) * (*this)(2, 0));
-            //  Type aux2_1 = (*this)(1, 0) * (*this)(2, 2);
-            //  Type aux2_2 = (*this)(1, 2) * (*this)(2, 0);
-            //  Type aux2_3 = aux2_2 - aux2_1;
-            //  Type aux2 = (*this)(0, 1) * aux2_3;
+            // Type aux2_1 = (*this)(1, 0) * (*this)(2, 2);
+            // Type aux2_2 = (*this)(1, 2) * (*this)(2, 0);
+            // Type aux2_3 = aux2_2 - aux2_1;
+            // Type aux2 = (*this)(0, 1) * aux2_3;
             // Type aux3 = (*this)(0, 2) * ((*this)(1, 0) * (*this)(2, 1) - (*this)(1, 1) * (*this)(2, 0));
-            //  Type aux3_1 = (*this)(1, 0) * (*this)(2, 1);
-            //  Type aux3_2 = (*this)(1, 1) * (*this)(2, 0);
-            //  Type aux3_3 = aux3_1 - aux3_2;
-            //  Type aux3 = (*this)(0, 2) * aux3_3;
+            // Type aux3_1 = (*this)(1, 0) * (*this)(2, 1);
+            // Type aux3_2 = (*this)(1, 1) * (*this)(2, 0);
+            // Type aux3_3 = aux3_1 - aux3_2;
+            // Type aux3 = (*this)(0, 2) * aux3_3;
             // Type aux4 = aux1 + aux2;
             // Type result = aux4 + aux3;
             return result;
@@ -558,6 +567,16 @@ namespace linalg
         // Inverse of 3×3
         Mat3<Type> inverse() const
         {
+            // #pragma HLS PIPELINE II = 1
+#pragma HLS allocation operation instances = add limit = 1
+#pragma HLS allocation operation instances = sub limit = 1
+#pragma HLS allocation operation instances = mul limit = 1
+#pragma HLS allocation operation instances = div limit = 1
+#pragma HLS allocation operation instances = fadd limit = 1
+#pragma HLS allocation operation instances = fsub limit = 1
+#pragma HLS allocation operation instances = fmul limit = 1
+#pragma HLS allocation operation instances = fdiv limit = 1
+
             Mat3<Type> inv;
             // const Mat3<Type> &m = (*this);
 

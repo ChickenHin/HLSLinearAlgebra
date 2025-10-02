@@ -7,7 +7,7 @@ extern "C" void top(const double q[4], const double v[3], double v_rot[3])
 #pragma HLS INTERFACE s_axilite port = v_rot bundle = control
 #pragma HLS INTERFACE s_axilite port = return bundle = control
 
-#pragma HLS PIPELINE
+//#pragma HLS PIPELINE II = 1
 
     // Convert input arrays to quaternion and vector
     linalg::Quaternion<float> quat(q[0], q[1], q[2], q[3]); // w, x, y, z
