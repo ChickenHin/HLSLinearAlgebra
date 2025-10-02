@@ -46,7 +46,7 @@ public:
     ap_uint<in_nbits> encode__() const
     {
         // #pragma HLS INLINE
-        //   #pragma HLS PIPELINE off
+        //    #pragma HLS PIPELINE off
         ap_uint<in_nbits> bits;
 
         bool reg_bit;
@@ -118,7 +118,7 @@ public:
     ap_uint<in_nbits> encode_() const
     {
         // #pragma HLS INLINE
-        //   #pragma HLS PIPELINE off
+        //    #pragma HLS PIPELINE off
         ap_uint<in_nbits> bits;
 
         bool reg_bit;
@@ -190,7 +190,7 @@ public:
     ap_uint<in_nbits> encode() const
     {
         // #pragma HLS INLINE
-        //   #pragma HLS PIPELINE off
+        //     #pragma HLS PIPELINE off
         ap_uint<in_nbits> bits;
 
         bool simbol;
@@ -269,7 +269,7 @@ public:
     void decode(const ap_uint<in_nbits> &bits)
     {
         // #pragma HLS INLINE
-        //   #pragma HLS PIPELINE off
+        //     #pragma HLS PIPELINE off
 
         sign_ = bits[in_nbits - 1];
         bool simbol = bits[in_nbits - 2];
@@ -355,6 +355,45 @@ public:
         // frac_ = frac;
     }
 
+    int getTotalExp() const
+    {
+        // #pragma HLS INLINE
+
+        // #pragma HLS INLINE
+        // get exponent from k and e
+        return k_ * (1 << ebits) + exp_;
+    }
+
+    void setKEFromTotalExp(int in_exp)
+    {
+        // #pragma HLS INLINE
+
+        // get k and e from floating point exponent
+        // How many times each exponent over - or under - flowed the valid interval
+        int k = in_exp / (1 << ebits); // works for negatives too
+
+        // New exponent in the allowed range (0, max_exp_val - 1)
+        // exp_ = in_exp % (1 << ebits);
+        ap_int<ebits + 1> exp = in_exp - k * (1 << ebits);
+
+        // If `a` and `b` have opposite signs and the remainder is non-zero,
+        // the truncated result is too large; subtract one to get the floor.
+        // if (exp_ < 0)
+        //{
+        //    --k_;
+        // exp = 0;
+        //}
+
+        if (exp < 0)
+        {
+            --k;
+            exp += (1 << ebits);
+        }
+
+        k_ = k;
+        exp_ = exp;
+    }
+
     posit_unpacked operator+(const posit_unpacked &rhs) const
     {
         // #pragma HLS INLINE
@@ -401,11 +440,13 @@ public:
         ap_ufixed<fbits + 3, 3> frac = frac1 + frac2;
 
         // normalize
-        // if (frac == 0)
-        //{
-        //    exp = 0;
-        //}
-        // else
+        if (frac == 0)
+        {
+            sign = 0;
+            k = 0;
+            exp = 0;
+        }
+        else
         {
             int shift = count_leading_simbol(frac) - 2;
             if (shift > 0)
@@ -470,8 +511,11 @@ public:
     {
         // #pragma HLS INLINE
 
-        posit_unpacked in2 = rhs;
-        in2.sign_ = !in2.sign_;
+        posit_unpacked in2;
+        in2.sign_ = !rhs.sign_;
+        in2.k_ = rhs.k_;
+        in2.exp_ = rhs.exp_;
+        in2.frac_ = rhs.frac_;
 
         posit_unpacked out = (*this) + in2;
 
@@ -486,6 +530,13 @@ public:
         ap_int<kbits> k = k_ + rhs.k_;
         ap_int<ebits + 2> exp = exp_ + rhs.exp_;
         ap_ufixed<fbits * 2 + 2, 2> frac = frac_ * rhs.frac_;
+
+        if (frac == 0)
+        {
+            sign = 0;
+            k = 0;
+            exp = 0;
+        }
 
         // normalize fraction
         if (frac >= 2)
@@ -602,6 +653,13 @@ public:
             k++;
         }
 
+        if (rfrac == 0)
+        {
+            sign = 0;
+            k = 0;
+            exp = 0;
+        }
+
         posit_unpacked out;
         out.sign_ = sign;
         out.k_ = k;
@@ -622,45 +680,6 @@ public:
         result.frac_ = frac_;
 
         return result;
-    }
-
-    int getTotalExp() const
-    {
-        // #pragma HLS INLINE
-
-        // #pragma HLS INLINE
-        // get exponent from k and e
-        return k_ * (1 << ebits) + exp_;
-    }
-
-    void setKEFromTotalExp(int in_exp)
-    {
-        // #pragma HLS INLINE
-
-        // get k and e from floating point exponent
-        // How many times each exponent over - or under - flowed the valid interval
-        int k = in_exp / (1 << ebits); // works for negatives too
-
-        // New exponent in the allowed range (0, max_exp_val - 1)
-        // exp_ = in_exp % (1 << ebits);
-        ap_int<ebits + 1> exp = in_exp - k * (1 << ebits);
-
-        // If `a` and `b` have opposite signs and the remainder is non-zero,
-        // the truncated result is too large; subtract one to get the floor.
-        // if (exp_ < 0)
-        //{
-        //    --k_;
-        // exp = 0;
-        //}
-
-        if (exp < 0)
-        {
-            --k;
-            exp += (1 << ebits);
-        }
-
-        k_ = k;
-        exp_ = exp;
     }
 
     bool sign_;
@@ -887,11 +906,15 @@ public:
 
     Posit(const Posit &other)
     {
+        // #pragma HLS INLINE
+
         bits_ = other.bits_;
     }
 
     Posit &operator=(const Posit &other)
     {
+        // #pragma HLS INLINE
+
         bits_ = other.bits_;
         /*
         if (this != &other)
@@ -1326,6 +1349,16 @@ public:
         posit_unpacked<kbits, ebits, fbits> out = in1 / rhs;
 
         return out;
+    }
+
+    posit_unpacked<kbits, ebits, fbits> operator-() const
+    {
+        // #pragma HLS INLINE
+
+        posit_unpacked<kbits, ebits, fbits> in1;
+        in1.template decode<nbits, ebits>(bits_);
+
+        return -in1;
     }
 
     /*

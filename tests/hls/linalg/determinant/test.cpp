@@ -6,7 +6,16 @@
 #include "linalg/linalg.h"
 
 // Declare the top-level function to be tested
-extern "C" void top(const double in_a[16], double &out);
+extern "C" void top(double in_0,
+                    double in_1,
+                    double in_2,
+                    double in_3,
+                    double in_4,
+                    double in_5,
+                    double in_6,
+                    double in_7,
+                    double in_8,
+                    double &out);
 
 static bool check_rel_error(const std::string &name, double expected, double actual, double &max_err, double thresh = 1e-6)
 {
@@ -32,16 +41,14 @@ int main()
 
     // 0: determinant
     {
-        double in_a[16] = {0};
         double out;
         // Matrix (row-major)
         double m[9] = {
             1.0, 2.0, 3.0,
             0.0, 1.0, 4.0,
             5.0, 6.0, 0.0};
-        for (int i = 0; i < 9; ++i)
-            in_a[i] = m[i];
-        top(in_a, out);
+
+        top(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], out);
         // Golden determinant
         double det = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6]);
         double maxe = 0.0;
