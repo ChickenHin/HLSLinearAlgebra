@@ -530,14 +530,14 @@ namespace linalg
         // 3×3 determinant
         Type determinant() const
         {
-#pragma HLS allocation operation instances = add limit = 1
-#pragma HLS allocation operation instances = sub limit = 1
-#pragma HLS allocation operation instances = mul limit = 1
-#pragma HLS allocation operation instances = div limit = 1
-#pragma HLS allocation operation instances = fadd limit = 1
-#pragma HLS allocation operation instances = fsub limit = 1
-#pragma HLS allocation operation instances = fmul limit = 1
-#pragma HLS allocation operation instances = fdiv limit = 1
+//#pragma HLS allocation operation instances = add limit = 1
+//#pragma HLS allocation operation instances = sub limit = 1
+//#pragma HLS allocation operation instances = mul limit = 1
+//#pragma HLS allocation operation instances = div limit = 1
+//#pragma HLS allocation operation instances = fadd limit = 1
+//#pragma HLS allocation operation instances = fsub limit = 1
+//#pragma HLS allocation operation instances = fmul limit = 1
+//#pragma HLS allocation operation instances = fdiv limit = 1
 
             // HLS_INLINE
             //  HLS_PIPELINE
@@ -568,14 +568,14 @@ namespace linalg
         Mat3<Type> inverse() const
         {
             // #pragma HLS PIPELINE II = 1
-#pragma HLS allocation operation instances = add limit = 1
-#pragma HLS allocation operation instances = sub limit = 1
-#pragma HLS allocation operation instances = mul limit = 1
-#pragma HLS allocation operation instances = div limit = 1
-#pragma HLS allocation operation instances = fadd limit = 1
-#pragma HLS allocation operation instances = fsub limit = 1
-#pragma HLS allocation operation instances = fmul limit = 1
-#pragma HLS allocation operation instances = fdiv limit = 1
+//#pragma HLS allocation operation instances = add limit = 1
+//#pragma HLS allocation operation instances = sub limit = 1
+//#pragma HLS allocation operation instances = mul limit = 1
+//#pragma HLS allocation operation instances = div limit = 1
+//#pragma HLS allocation operation instances = fadd limit = 1
+//#pragma HLS allocation operation instances = fsub limit = 1
+//#pragma HLS allocation operation instances = fmul limit = 1
+//#pragma HLS allocation operation instances = fdiv limit = 1
 
             Mat3<Type> inv;
             // const Mat3<Type> &m = (*this);

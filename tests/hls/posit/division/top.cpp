@@ -11,6 +11,6 @@ extern "C" void top(double in_a, double in_b, double &out)
 
     Posit<32, 3> fx_a(in_a);
     Posit<32, 3> fx_b(in_b);
-
-    out = (double)(fx_a / fx_b);
+    Posit<32, 3> res = fx_a / fx_b;
+    out = (double)res;
 }

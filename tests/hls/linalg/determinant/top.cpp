@@ -26,7 +26,7 @@ extern "C" void top(double in_0,
 #pragma HLS INTERFACE s_axilite port = out bundle = control
 #pragma HLS INTERFACE s_axilite port = return bundle = control
 
-    // #pragma HLS PIPELINE II = 1
+#pragma HLS PIPELINE
 
     // linalg::Mat3<float> M(in_a);
 
