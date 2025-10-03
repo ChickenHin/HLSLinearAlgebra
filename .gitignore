@@ -1,4 +1,42 @@
-/src/vitis_workspace
-/src/vivado_workspace
-/vitis_workspace
-/build
+# Build directories
+/build/
+/build_hls/
+/vitis_workspace/
+/vivado_workspace/
+/src/vitis_workspace/
+/src/vivado_workspace/
+/tests/hls/vitis_workspace/
+/tests/hls/__pycache__/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.orig
+test_detail.xml
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+
+# Compiled binaries and libraries
+*.exe
+*.out
+*.so
+*.dylib
+*.dll
+*.a
+*.lib
+
+# Log files
+*.log

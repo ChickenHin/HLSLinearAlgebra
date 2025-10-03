@@ -6,7 +6,7 @@
         //	"dockerfile": "../docker/Dockerfile",
         //	"context": ".."
         //},
-        "image": "vivado:2023.2",
+        "image": "bcc003ce2b6d/vivado_2023.2:v1",
         "customizations":
             {
               "vscode": {
@@ -18,7 +18,8 @@
                   "donjayamanne.python-extension-pack"
                 ]
               }
-            }
+            },
+        "postCreateCommand": "cp /workspaces/HLSLinearAlgebra/.devcontainer/.settings64-Vitis.sh /tools/Xilinx/Vitis/2023.2/ && apt-get update && apt-get install -y build-essential cmake libeigen3-dev"
         //"postCreateCommand": "cmake -S . -B build && cmake --build build",
         //"remoteUser": "vscode"
   
