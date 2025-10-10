@@ -530,14 +530,14 @@ namespace linalg
         // 3×3 determinant
         Type determinant() const
         {
-//#pragma HLS allocation operation instances = add limit = 1
-//#pragma HLS allocation operation instances = sub limit = 1
-//#pragma HLS allocation operation instances = mul limit = 1
-//#pragma HLS allocation operation instances = div limit = 1
-//#pragma HLS allocation operation instances = fadd limit = 1
-//#pragma HLS allocation operation instances = fsub limit = 1
-//#pragma HLS allocation operation instances = fmul limit = 1
-//#pragma HLS allocation operation instances = fdiv limit = 1
+            // #pragma HLS allocation operation instances = add limit = 1
+            // #pragma HLS allocation operation instances = sub limit = 1
+            // #pragma HLS allocation operation instances = mul limit = 1
+            // #pragma HLS allocation operation instances = div limit = 1
+            // #pragma HLS allocation operation instances = fadd limit = 1
+            // #pragma HLS allocation operation instances = fsub limit = 1
+            // #pragma HLS allocation operation instances = fmul limit = 1
+            // #pragma HLS allocation operation instances = fdiv limit = 1
 
             // HLS_INLINE
             //  HLS_PIPELINE
@@ -568,14 +568,14 @@ namespace linalg
         Mat3<Type> inverse() const
         {
             // #pragma HLS PIPELINE II = 1
-//#pragma HLS allocation operation instances = add limit = 1
-//#pragma HLS allocation operation instances = sub limit = 1
-//#pragma HLS allocation operation instances = mul limit = 1
-//#pragma HLS allocation operation instances = div limit = 1
-//#pragma HLS allocation operation instances = fadd limit = 1
-//#pragma HLS allocation operation instances = fsub limit = 1
-//#pragma HLS allocation operation instances = fmul limit = 1
-//#pragma HLS allocation operation instances = fdiv limit = 1
+            // #pragma HLS allocation operation instances = add limit = 1
+            // #pragma HLS allocation operation instances = sub limit = 1
+            // #pragma HLS allocation operation instances = mul limit = 1
+            // #pragma HLS allocation operation instances = div limit = 1
+            // #pragma HLS allocation operation instances = fadd limit = 1
+            // #pragma HLS allocation operation instances = fsub limit = 1
+            // #pragma HLS allocation operation instances = fmul limit = 1
+            // #pragma HLS allocation operation instances = fdiv limit = 1
 
             Mat3<Type> inv;
             // const Mat3<Type> &m = (*this);
@@ -833,6 +833,26 @@ namespace linalg
             return quaternion_.matrix();
         }
 
+        static SO3 exp(const Vec3<Type> &phi)
+        {
+            Type angle = phi.norm();
+            if (angle < Type(1e-12))
+            {
+                // Near zero, use approximation: exp(phi) ~ I + wedge(phi)
+                Mat3<Type> approx = Mat3<Type>::Identity() + wedge(phi);
+                return SO3(approx);
+            }
+
+            Vec3<Type> axis = (phi / angle);
+            Type s = math::sin(angle);
+            Type c = math::cos(angle);
+
+            // Rodrigues' formula: R = I c + (1-c) (axis axis^T) + [axis]_x s
+            Mat3<Type> R = Mat3<Type>::Identity() * c + outerProduct(axis, axis) * (Type(1) - c) + wedge(axis) * s;
+
+            return SO3(R);
+        }
+
         /*
         // Convert quaternion -> 3×3 rotation (assuming unit quaternion)
         void fromQuaternion(Type qw, Type qx, Type qy, Type qz)
@@ -935,28 +955,6 @@ namespace linalg
             for (int c = 0; c < 3; c++)
                 m(r, c) = a(r) * b(c);
         return m;
-    }
-
-    // Exponential map for so(3)
-    template <typename Type>
-    SO3<Type> so3Exp(const Vec3<Type> &phi)
-    {
-        Type angle = phi.norm();
-        if (angle < Type(1e-12))
-        {
-            // Near zero, use approximation: exp(phi) ~ I + wedge(phi)
-            Mat3<Type> approx = Mat3<Type>::Identity() + wedge(phi);
-            return SO3<Type>(approx);
-        }
-
-        Vec3<Type> axis = (phi / angle);
-        Type s = math::sin(angle);
-        Type c = math::cos(angle);
-
-        // Rodrigues' formula: R = I c + (1-c) (axis axis^T) + [axis]_x s
-        Mat3<Type> R = Mat3<Type>::Identity() * c + outerProduct(axis, axis) * (Type(1) - c) + wedge(axis) * s;
-
-        return SO3<Type>(R);
     }
 
     //============================================================
