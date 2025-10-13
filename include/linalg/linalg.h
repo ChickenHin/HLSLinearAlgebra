@@ -95,6 +95,7 @@ namespace linalg
             }
         }
 
+        /*
         operator float() const
         {
 #ifndef USE_VITIS
@@ -102,6 +103,7 @@ namespace linalg
 #endif
             return get_(0, 0);
         }
+        */
 
         // Assignment operator
         Mat &operator=(const Mat &other)
