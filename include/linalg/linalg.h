@@ -71,7 +71,7 @@ namespace linalg
         mat_const_data_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
-                // #pragma HLS UNROLL
+#pragma HLS UNROLL
                 data_[i] = data[i];
             }
         }
@@ -92,6 +92,7 @@ namespace linalg
         mat_const_other_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
+#pragma HLS UNROLL
                 data_[i] = Type(other.data()[i]);
             }
         }
@@ -123,6 +124,7 @@ namespace linalg
         mat_assign_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
+#pragma HLS UNROLL
                 data_[i] = Type(other.data()[i]);
             }
 
@@ -138,7 +140,8 @@ namespace linalg
         mat_zero_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
-                result.data_[i] = Type(0.0f);
+#pragma HLS UNROLL
+                result.data_[i] = Type(0);
             }
 
             /*
@@ -164,7 +167,7 @@ namespace linalg
             Mat result = Zero();
         mat_identity_loop_i:
             for (int i = 0; i < _rows; i++)
-                // #pragma HLS UNROLL
+#pragma HLS UNROLL
                 result(i, i) = Type(1);
             return result;
         }
@@ -197,11 +200,13 @@ namespace linalg
             Mat<Type, _rows, __cols> result = Mat<Type, _rows, __cols>::Zero();
         mat_mult_loop_r:
             for (int r = 0; r < _rows; r++)
+#pragma HLS UNROLL
             mat_mult_loop_c:
                 for (int c = 0; c < __cols; c++)
+#pragma HLS UNROLL
                 mat_mult_loop_k:
                     for (int k = 0; k < _cols; k++)
-
+#pragma HLS UNROLL
                         result(r, c) += get_(r, k) * rhs(k, c);
 
             return result;
@@ -1036,19 +1041,36 @@ namespace linalg
 
         Mat4<Type> matrix() const
         {
-            Mat4<Type> mat = Mat4<Type>::Zero();
+            Mat4<Type> mat; // = Mat4<Type>::Zero();
             Mat3<Type> R = so3_.matrix();
-        se3_matrix_loop_r:
-            for (int r = 0; r < 3; r++)
-                // #pragma HLS UNROLL
-            se3_matrix_loop_c:
-                for (int c = 0; c < 3; c++)
-                    // #pragma HLS UNROLL
-                    mat(r, c) = R(r, c);
+            // se3_matrix_loop_r:
+            //     for (int r = 0; r < 3; r++)
+            //         // #pragma HLS UNROLL
+            //     se3_matrix_loop_c:
+            //         for (int c = 0; c < 3; c++)
+            //  #pragma HLS UNROLL
+            //            mat(r, c) = R(r, c);
+
+            mat(0, 0) = R(0, 0);
+            mat(0, 1) = R(0, 1);
+            mat(0, 2) = R(0, 2);
+            mat(0, 3) = Type(0);
+
+            mat(1, 0) = R(1, 0);
+            mat(1, 1) = R(1, 1);
+            mat(1, 2) = R(1, 2);
+            mat(1, 3) = Type(0);
+
+            mat(2, 0) = R(2, 0);
+            mat(2, 1) = R(2, 1);
+            mat(2, 2) = R(2, 2);
+            mat(2, 3) = Type(0);
+
             mat(3, 0) = trans_(0);
             mat(3, 1) = trans_(1);
             mat(3, 2) = trans_(2);
             mat(3, 3) = Type(1);
+
             return mat;
         }
 
