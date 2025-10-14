@@ -77,7 +77,8 @@ namespace linalg
         }
 
         // Copy constructor
-        Mat(const Mat &other)
+        template <typename OtherType>
+        Mat(const Mat<OtherType, _rows, _cols> &other)
         {
             /*
                     mat_const_other_loop_r:
@@ -91,7 +92,7 @@ namespace linalg
         mat_const_other_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
-                data_[i] = other.data_[i];
+                data_[i] = Type(other.data()[i]);
             }
         }
 
@@ -106,7 +107,8 @@ namespace linalg
         */
 
         // Assignment operator
-        Mat &operator=(const Mat &other)
+        template <typename OtherType>
+        Mat &operator=(const Mat<OtherType, _rows, _cols> &other)
         {
             // if (this != &other)
             /*
@@ -121,7 +123,7 @@ namespace linalg
         mat_assign_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
-                data_[i] = other.data_[i];
+                data_[i] = Type(other.data()[i]);
             }
 
             return *this;
@@ -391,16 +393,18 @@ namespace linalg
     {
     public:
         Vec3() : Mat<Type, 3, 1>() {}
-        Vec3(const Mat<Type, 3, 1> &mat)
+        template <typename OtherType>
+        Vec3(const Mat<OtherType, 3, 1> &mat)
             : Mat<Type, 3, 1>(mat) // call the base-class copy constructor
         {
         }
 
-        Vec3(Type x, Type y, Type z)
+        template <typename Type1, typename Type2, typename Type3>
+        Vec3(Type1 x, Type2 y, Type3 z)
         {
-            (*this)(0) = x;
-            (*this)(1) = y;
-            (*this)(2) = z;
+            (*this)(0) = Type(x);
+            (*this)(1) = Type(y);
+            (*this)(2) = Type(z);
         }
 
         bool operator==(const Vec3 &other) const
