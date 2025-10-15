@@ -196,19 +196,27 @@ namespace linalg
 #ifndef USE_VITIS
             static_assert(_cols == __rows, "Inner dimensions must match for matrix multiplication");
 #endif
+            // #pragma HLS INLINE
 
-            Mat<Type, _rows, __cols> result = Mat<Type, _rows, __cols>::Zero();
+            Mat<Type, _rows, __cols> result; // = Mat<Type, _rows, __cols>::Zero();
         mat_mult_loop_r:
             for (int r = 0; r < _rows; r++)
-#pragma HLS UNROLL
+            {
+                // #pragma HLS PIPELINE II = 1
             mat_mult_loop_c:
                 for (int c = 0; c < __cols; c++)
-#pragma HLS UNROLL
+                {
+                    Type acc = 0.0;
+                    // #pragma HLS LOOP_FLATTEN
                 mat_mult_loop_k:
                     for (int k = 0; k < _cols; k++)
-#pragma HLS UNROLL
-                        result(r, c) += get_(r, k) * rhs(k, c);
-
+                    {
+                        // #pragma HLS LOOP_FLATTEN
+                        acc += get_(r, k) * rhs(k, c);
+                    }
+                    result(r, c) = acc;
+                }
+            }
             return result;
         }
 
@@ -335,12 +343,19 @@ namespace linalg
     template <typename Type, int rows, int cols>
     Mat<Type, rows, cols> operator*(const Mat<Type, rows, cols> &m, Type s)
     {
+#pragma HLS INLINE
         Mat<Type, rows, cols> result;
     mat_fmult_loop_r:
         for (int r = 0; r < rows; r++)
+        {
+#pragma HLS PIPELINE II = 1
         mat_fmult_loop_c:
             for (int c = 0; c < cols; c++)
+            {
+#pragma HLS LOOP_FLATTEN
                 result(r, c) = m(r, c) * s;
+            }
+        }
         return result;
     }
 
@@ -391,7 +406,22 @@ namespace linalg
             (*this)(0) = x;
             (*this)(1) = y;
         }
+
+        template <typename OtherType>
+        Vec2 operator*(const OtherType &s) const
+        {
+            Vec2 result;
+            result(0) = (*this)(0) * s;
+            result(1) = (*this)(1) * s;
+            return result;
+        }
     };
+
+    template <typename Type>
+    Vec2<Type> operator*(Type s, const Vec2<Type> &m)
+    {
+        return m * s;
+    }
 
     template <typename Type>
     class Vec3 : public Mat<Type, 3, 1>
@@ -627,6 +657,25 @@ namespace linalg
         Mat4(const Mat<Type, 4, 4> &mat)
             : Mat<Type, 4, 4>(mat) // call the base-class copy constructor
         {
+            // #pragma HLS ARRAY_PARTITION variable = Mat < Type, 4, 4> ::data_ dim = 1 type = complete
+        }
+
+        template <class OtherType>
+        Vec4<Type> operator*(const Vec4<OtherType> &rhs) const
+        {
+            // #pragma HLS INLINE
+            Vec4<Type> result;
+            result(0) = rhs(0) * (*this)(0, 0) + rhs(1) * (*this)(0, 1) + rhs(2) * (*this)(0, 2) + rhs(3) * (*this)(0, 3);
+            result(1) = rhs(0) * (*this)(1, 0) + rhs(1) * (*this)(1, 1) + rhs(2) * (*this)(1, 2) + rhs(3) * (*this)(1, 3);
+            result(2) = rhs(0) * (*this)(2, 0) + rhs(1) * (*this)(2, 1) + rhs(2) * (*this)(2, 2) + rhs(3) * (*this)(2, 3);
+            result(3) = rhs(0) * (*this)(3, 0) + rhs(1) * (*this)(3, 1) + rhs(2) * (*this)(3, 2) + rhs(3) * (*this)(3, 3);
+            return result;
+        }
+
+        Mat4 operator*(const Mat4 &rhs) const
+        {
+            // #pragma HLS INLINE
+            return Mat<Type, 4, 4>::operator*(rhs);
         }
     };
 
