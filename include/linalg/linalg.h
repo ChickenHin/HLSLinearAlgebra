@@ -343,16 +343,16 @@ namespace linalg
     template <typename Type, int rows, int cols>
     Mat<Type, rows, cols> operator*(const Mat<Type, rows, cols> &m, Type s)
     {
-#pragma HLS INLINE
+        // #pragma HLS INLINE
         Mat<Type, rows, cols> result;
     mat_fmult_loop_r:
         for (int r = 0; r < rows; r++)
         {
-#pragma HLS PIPELINE II = 1
+            // #pragma HLS PIPELINE II = 1
         mat_fmult_loop_c:
             for (int c = 0; c < cols; c++)
             {
-#pragma HLS LOOP_FLATTEN
+                // #pragma HLS LOOP_FLATTEN
                 result(r, c) = m(r, c) * s;
             }
         }
@@ -413,6 +413,14 @@ namespace linalg
             Vec2 result;
             result(0) = (*this)(0) * s;
             result(1) = (*this)(1) * s;
+            return result;
+        }
+
+        Vec2 operator+(const Vec2 &rhs) const
+        {
+            Vec2 result;
+            result(0) = (*this)(0) * rhs(0);
+            result(1) = (*this)(1) * rhs(1);
             return result;
         }
     };
