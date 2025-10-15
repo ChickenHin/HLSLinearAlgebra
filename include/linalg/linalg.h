@@ -419,8 +419,8 @@ namespace linalg
         Vec2 operator+(const Vec2 &rhs) const
         {
             Vec2 result;
-            result(0) = (*this)(0) * rhs(0);
-            result(1) = (*this)(1) * rhs(1);
+            result(0) = (*this)(0) + rhs(0);
+            result(1) = (*this)(1) + rhs(1);
             return result;
         }
     };
