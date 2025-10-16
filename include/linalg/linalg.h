@@ -450,21 +450,72 @@ namespace linalg
             (*this)(2) = Type(z);
         }
 
-        bool operator==(const Vec3 &other) const
+        bool operator==(const Mat<Type, 3, 1> &other) const
         {
             return ((*this)(0) == other(0) &&
                     (*this)(1) == other(1) &&
                     (*this)(2) == other(2));
         }
 
-        // Cross product
-        Vec3<Type> cross(const Vec3<Type> &other) const
+        template <typename OtherType>
+        Vec3 operator*(const Mat<OtherType, 3, 1> &other)
         {
-            Vec3<Type> result;
+            Vec3 result;
+            result(0) = (*this)(0) * other(0);
+            result(1) = (*this)(1) * other(1);
+            result(2) = (*this)(2) * other(2);
+            return result;
+        }
+
+        template <typename OtherType>
+        Vec3 operator+(const Mat<OtherType, 3, 1> &other) const
+        {
+            Vec3 result;
+            result(0) = (*this)(0) + other(0);
+            result(1) = (*this)(1) + other(1);
+            result(2) = (*this)(2) + other(2);
+            return result;
+        }
+
+        template <typename OtherType>
+        Vec3 operator-(const Mat<OtherType, 3, 1> &other) const
+        {
+            Vec3 result;
+            result(0) = (*this)(0) - other(0);
+            result(1) = (*this)(1) - other(1);
+            result(2) = (*this)(2) - other(2);
+            return result;
+        }
+
+        Vec3 operator-() const
+        {
+            Vec3 result;
+            result(0) = -(*this)(0);
+            result(1) = -(*this)(1);
+            result(2) = -(*this)(2);
+            return result;
+        }
+
+        template <typename OtherType>
+        Type dot(const Mat<OtherType, 3, 1> &other)
+        {
+            return (*this)(0) * other(0) + (*this)(1) * other(1) + (*this)(2) * other(2);
+        }
+
+        template <typename OtherType>
+        Vec3 cross(const Mat<OtherType, 3, 1> &other) const
+        {
+            Vec3 result;
             result(0) = (*this)(1) * other(2) - (*this)(2) * other(1);
             result(1) = (*this)(2) * other(0) - (*this)(0) * other(2);
             result(2) = (*this)(0) * other(1) - (*this)(1) * other(0);
             return result;
+        }
+
+        Vec3 normalized() const
+        {
+            Type norm = math::sqrt((*this)(0) * (*this)(0) + (*this)(1) * (*this)(1) + (*this)(2) * (*this)(2));
+            return Vec3((*this)(0) / norm, (*this)(1) / norm, (*this)(2) / norm);
         }
     };
 
@@ -486,9 +537,22 @@ namespace linalg
             (*this)(3) = w;
         }
 
+        Vec4(Vec3<Type> v, Type w)
+        {
+            (*this)(0) = v(0);
+            (*this)(1) = v(1);
+            (*this)(2) = v(2);
+            (*this)(3) = w;
+        }
+
         Vec2<Type> xy()
         {
             return Vec2<Type>((*this)(0), (*this)(1));
+        }
+
+        operator Vec3<Type>() const
+        {
+            return Vec3<Type>((*this)(0), (*this)(1), (*this)(2));
         }
     };
 
@@ -574,6 +638,17 @@ namespace linalg
         Mat3(const OtherType mat[9])
             : Mat<Type, 3, 3>(mat) // call the base-class copy constructor
         {
+        }
+
+        template <class OtherType>
+        Vec3<Type> operator*(const Vec3<OtherType> &rhs) const
+        {
+            // #pragma HLS INLINE
+            Vec3<Type> result;
+            result(0) = rhs(0) * (*this)(0, 0) + rhs(1) * (*this)(0, 1) + rhs(2) * (*this)(0, 2);
+            result(1) = rhs(0) * (*this)(1, 0) + rhs(1) * (*this)(1, 1) + rhs(2) * (*this)(1, 2);
+            result(2) = rhs(0) * (*this)(2, 0) + rhs(1) * (*this)(2, 1) + rhs(2) * (*this)(2, 2);
+            return result;
         }
 
         // 3×3 determinant
