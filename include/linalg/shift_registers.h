@@ -8,11 +8,11 @@ class ShiftRegister
 public:
     ShiftRegister()
     {
-        HLS_INLINE
+        // #pragma HLS INLINE
     sr_init_loop:
         for (int i = 0; i < size; i++)
         {
-            HLS_UNROLL
+            // #pragma HLS UNROLL
             data[i] = type(0);
         }
     }

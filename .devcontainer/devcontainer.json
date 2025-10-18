@@ -15,7 +15,9 @@
                 },
                 "extensions": [
                   "ms-vscode.cpptools-extension-pack",
-                  "donjayamanne.python-extension-pack"
+                  "donjayamanne.python-extension-pack",
+                  "google.geminicodeassist",
+                  "google.gemini-cli-vscode-ide-companion"
                 ]
               }
             },

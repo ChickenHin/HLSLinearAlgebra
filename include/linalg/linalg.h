@@ -1,23 +1,20 @@
 
 #pragma once
 
-// #include "common.h"
-
-// HLS pragma macros - only active during synthesis
 #ifdef USE_VITIS
-#define HLS_PRAGMA(x) _Pragma(#x)
-#define HLS_INLINE HLS_PRAGMA(HLS INLINE)
-#define HLS_UNROLL HLS_PRAGMA(HLS UNROLL)
-#define HLS_PIPELINE HLS_PRAGMA(HLS PIPELINE)
-#define HLS_ARRAY_PARTITION(var, type, dim) HLS_PRAGMA(HLS ARRAY_PARTITION variable = var type = type dim = dim)
+// #define HLS_PRAGMA(x) _Pragma(#x)
+// #define HLS_INLINE HLS_PRAGMA(HLS INLINE)
+// #define HLS_UNROLL HLS_PRAGMA(HLS UNROLL)
+// #define HLS_PIPELINE HLS_PRAGMA(HLS PIPELINE)
+// #define HLS_ARRAY_PARTITION(var, type, dim) HLS_PRAGMA(HLS ARRAY_PARTITION variable = var type = type dim = dim)
 #include "hls_math.h"
 namespace math = hls;
 #else
-#define HLS_PRAGMA(x)
-#define HLS_INLINE
-#define HLS_UNROLL
-#define HLS_PIPELINE
-#define HLS_ARRAY_PARTITION(var, type, dim)
+// #define HLS_PRAGMA(x)
+// #define HLS_INLINE
+// #define HLS_UNROLL
+// #define HLS_PIPELINE
+// #define HLS_ARRAY_PARTITION(var, type, dim)
 #include <cmath>
 namespace math = std;
 #endif
@@ -32,42 +29,13 @@ namespace linalg
     class Mat
     {
     public:
-        // Default constructor: initialize to zero
         Mat()
         {
-            //            HLS_INLINE
-            /*
-        mat_init_loop_r:
-            for (int r = 0; r < _rows; r++)
-            {
-                //                HLS_UNROLL
-            mat_init_loop_c:
-                for (int c = 0; c < _cols; c++)
-                {
-                    //                    HLS_UNROLL
-                    get_(r, c) = Type(0);
-                }
-            }
-            */
         }
 
-        // Row major array constructor
         template <typename OtherType>
-        Mat(const OtherType data[_rows * _cols])
+        Mat(const OtherType *data)
         {
-            // #pragma HLS INLINE
-            //  #pragma HLS PIPELINE
-            /*
-                    mat_const_data_loop_r:
-                        for (int r = 0; r < _rows; r++)
-            //#pragma HLS UNROLL
-                            // #pragma HLS loop_merge force
-                        mat_init_loop_c:
-                            for (int c = 0; c < _cols; c++)
-                        // #pragma HLS LOOP_FLATTEN
-            //#pragma HLS UNROLL
-                                get_(r, c) = Type(data[r * _cols + c]);
-                                */
         mat_const_data_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
@@ -76,19 +44,10 @@ namespace linalg
             }
         }
 
-        // Copy constructor
         template <typename OtherType>
         Mat(const Mat<OtherType, _rows, _cols> &other)
         {
-            /*
-                    mat_const_other_loop_r:
-                        for (int r = 0; r < _rows; r++)
-                            // #pragma HLS UNROLL
-                        mat_const_other_loop_c:
-                            for (int c = 0; c < _cols; c++)
-                                // #pragma HLS UNROLL
-                                get_(r, c) = other(r, c);
-                                */
+
         mat_const_other_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
@@ -131,10 +90,8 @@ namespace linalg
             return *this;
         }
 
-        // Static "Zero" constructor
         static Mat Zero()
         {
-
             Mat result;
 
         mat_zero_loop:
@@ -143,22 +100,9 @@ namespace linalg
 #pragma HLS UNROLL
                 result.data_[i] = Type(0);
             }
-
-            /*
-        mat_zero_loop_r:
-            for (int r = 0; r < _rows; r++)
-                // #pragma HLS UNROLL
-
-            mat_zero_loop_c:
-                for (int c = 0; c < _cols; c++)
-                    // #pragma HLS UNROLL
-
-                    result(r, c) = Type(0);
-                    */
             return result;
         }
 
-        // Static "Identity" constructor (square matrices only!)
         static Mat Identity()
         {
 #ifndef USE_VITIS
@@ -189,7 +133,6 @@ namespace linalg
             return result;
         }
 
-        // Matrix multiplication
         template <typename Type2, int __rows, int __cols>
         Mat<Type, _rows, __cols> operator*(const Mat<Type2, __rows, __cols> &rhs) const
         {
@@ -220,26 +163,13 @@ namespace linalg
             return result;
         }
 
-        template <typename OutType, typename InType>
-        OutType conv(const Mat<InType, _rows, _cols> &rhs) const
-        {
-            OutType result = Type(0);
-        mat_conv_loop_r:
-            for (int r = 0; r < _rows; r++)
-            mat_conv_loop_k:
-                for (int k = 0; k < _cols; k++)
-                    result += OutType(get_(r, k) * rhs(r, k));
-
-            return result;
-        }
-
         Mat operator+(const Mat &other) const
         {
             Mat result;
-        mat_add_loop_r:
-            for (int r = 0; r < _rows; r++)
-            mat_add_loop_c:
-                for (int c = 0; c < _cols; c++)
+        mat_add_loop_c:
+            for (int c = 0; c < _cols; c++)
+            mat_add_loop_r:
+                for (int r = 0; r < _rows; r++)
                     result(r, c) = get_(r, c) + other(r, c);
             return result;
         }
@@ -247,21 +177,34 @@ namespace linalg
         Mat operator-(const Mat &other) const
         {
             Mat result;
-        mat_sub_loop_r:
-            for (int r = 0; r < _rows; r++)
-            mat_sub_loop_c:
-                for (int c = 0; c < _cols; c++)
+        mat_sub_loop_c:
+            for (int c = 0; c < _cols; c++)
+            mat_sub_loop_r:
+                for (int r = 0; r < _rows; r++)
                     result(r, c) = get_(r, c) - other(r, c);
+            return result;
+        }
+
+        template <typename OutType, typename InType>
+        OutType conv(const Mat<InType, _rows, _cols> &rhs) const
+        {
+            OutType result = Type(0);
+        mat_conv_loop_c:
+            for (int c = 0; c < _cols; c++)
+            mat_conv_loop_r:
+                for (int r = 0; r < _rows; r++)
+                    result += OutType(get_(r, c) * rhs(r, c));
+
             return result;
         }
 
         Mat operator-() const
         {
             Mat result;
-        mat_neg_loop_r:
-            for (int r = 0; r < _rows; r++)
-            mat_neg_loop_c:
-                for (int c = 0; c < _cols; c++)
+        mat_neg_loop_c:
+            for (int c = 0; c < _cols; c++)
+            mat_neg_loop_r:
+                for (int r = 0; r < _rows; r++)
                     result(r, c) = -get_(r, c);
             return result;
         }
@@ -270,10 +213,10 @@ namespace linalg
         Type norm() const
         {
             Type sum = Type(0);
-        mat_norm_loop_r:
-            for (int r = 0; r < _rows; r++)
-            mat_norm_loop_c:
-                for (int c = 0; c < _cols; c++)
+        mat_norm_loop_c:
+            for (int c = 0; c < _cols; c++)
+            mat_norm_loop_r:
+                for (int r = 0; r < _rows; r++)
                     sum += get_(r, c) * get_(r, c);
             return math::sqrt(sum);
         }
@@ -324,20 +267,22 @@ namespace linalg
         Type &get_(int r, int c)
         {
             // #pragma HLS INLINE
+            // column major
             //  return data_[r * _cols + c];
+            // row major
             return data_[c * _rows + r];
         }
 
         Type get_(int r, int c) const
         {
             // #pragma HLS INLINE
+            // column major
             //  return data_[r * _cols + c];
+            // row major
             return data_[c * _rows + r];
         }
 
-        // Type data_[_rows][_cols];
         Type data_[_rows * _cols];
-        // HLS_ARRAY_PARTITION(data, complete, 0)
     };
 
     template <typename Type, int rows, int cols>
@@ -345,13 +290,14 @@ namespace linalg
     {
         // #pragma HLS INLINE
         Mat<Type, rows, cols> result;
-    mat_fmult_loop_r:
-        for (int r = 0; r < rows; r++)
+    mat_fmult_loop_c:
+        for (int c = 0; c < cols; c++)
         {
-            // #pragma HLS PIPELINE II = 1
-        mat_fmult_loop_c:
-            for (int c = 0; c < cols; c++)
+        mat_fmult_loop_r:
+            for (int r = 0; r < rows; r++)
             {
+                // #pragma HLS PIPELINE II = 1
+
                 // #pragma HLS LOOP_FLATTEN
                 result(r, c) = m(r, c) * s;
             }
@@ -369,10 +315,10 @@ namespace linalg
     Mat<Type, rows, cols> operator/(const Mat<Type, rows, cols> &m, Type s)
     {
         Mat<Type, rows, cols> result;
-    mat_fdiv_loop_r:
-        for (int r = 0; r < rows; r++)
-        mat_fdiv_loop_c:
-            for (int c = 0; c < cols; c++)
+    mat_fdiv_loop_c:
+        for (int c = 0; c < cols; c++)
+        mat_fdiv_loop_r:
+            for (int r = 0; r < rows; r++)
                 result(r, c) = m(r, c) / s;
         return result;
     }
@@ -651,6 +597,12 @@ namespace linalg
             return result;
         }
 
+        Mat3 operator*(const Mat3 &rhs) const
+        {
+            // #pragma HLS INLINE
+            return Mat<Type, 3, 3>::operator*(rhs);
+        }
+
         // 3×3 determinant
         Type determinant() const
         {
@@ -689,7 +641,7 @@ namespace linalg
         }
 
         // Inverse of 3×3
-        Mat3<Type> inverse() const
+        Mat3 inverse() const
         {
             // #pragma HLS PIPELINE II = 1
             // #pragma HLS allocation operation instances = add limit = 1
@@ -701,7 +653,7 @@ namespace linalg
             // #pragma HLS allocation operation instances = fmul limit = 1
             // #pragma HLS allocation operation instances = fdiv limit = 1
 
-            Mat3<Type> inv;
+            Mat3 inv;
             // const Mat3<Type> &m = (*this);
 
             Type det = determinant();
@@ -890,32 +842,19 @@ namespace linalg
     public:
         SO3()
         {
-            // Set to identity
-            // matrix_ = Mat3<Type>::Identity();
             quaternion_ = Quaternion<Type>(Type(1), Type(0), Type(0), Type(0));
         }
-        /*
-        // Construct directly from a 3×3
-        SO3(const Mat3<Type> &m)
-        {
-            matrix_ = m;
-        }
-        */
 
-        // Build from a quaternion
         SO3(Type qw, Type qx, Type qy, Type qz)
         {
-            // fromQuaternion(qw, qx, qy, qz);
             quaternion_ = Quaternion<Type>(qw, qx, qy, qz);
         }
 
         SO3(Quaternion<Type> q)
         {
-            // fromQuaternion(q.w_, q.x_, q.y_, q.z_);
             quaternion_ = q;
         }
 
-        // Constructor from rotation matrix (converts to quaternion)
         SO3(const Mat3<Type> &R)
         {
             // Convert rotation matrix to quaternion using Shepperd's method
@@ -954,7 +893,8 @@ namespace linalg
                 quaternion_.z() = Type(0.25) * s;
             }
         }
-        SO3(const SO3<Type> &other)
+
+        SO3(const SO3 &other)
         {
             // matrix_ = other.matrix_;
             quaternion_ = other.quaternion_;
@@ -1043,18 +983,14 @@ namespace linalg
         // Type operator()(int r, int c) const { return matrix_(r, c); }
         // Type &operator()(int r, int c) { return matrix_(r, c); }
 
-        // Rotation of a vector
         Vec3<Type> operator*(const Vec3<Type> &v) const
         {
-            // return matrix_ * v;
             return quaternion_ * v;
         }
 
-        // Composition of two SO3 rotations
-        SO3<Type> operator*(const SO3<Type> &rhs) const
+        SO3 operator*(const SO3 &rhs) const
         {
-            // return SO3<Type>(matrix_ * rhs.matrix_);
-            return SO3<Type>(quaternion_ * rhs.quaternion_);
+            return SO3(quaternion_ * rhs.quaternion_);
         }
 
         // Get the underlying 3×3
@@ -1062,7 +998,6 @@ namespace linalg
         // Mat3<Type> &matrix() { return matrix_; }
 
     private:
-        // Mat3<Type> matrix_;
         Quaternion<Type> quaternion_;
     };
 
@@ -1175,6 +1110,7 @@ namespace linalg
         {
             Mat4<Type> mat; // = Mat4<Type>::Zero();
             Mat3<Type> R = so3_.matrix();
+
             // se3_matrix_loop_r:
             //     for (int r = 0; r < 3; r++)
             //         // #pragma HLS UNROLL
@@ -1184,55 +1120,73 @@ namespace linalg
             //            mat(r, c) = R(r, c);
 
             mat(0, 0) = R(0, 0);
-            mat(0, 1) = R(0, 1);
-            mat(0, 2) = R(0, 2);
-            mat(0, 3) = Type(0);
-
             mat(1, 0) = R(1, 0);
-            mat(1, 1) = R(1, 1);
-            mat(1, 2) = R(1, 2);
-            mat(1, 3) = Type(0);
-
             mat(2, 0) = R(2, 0);
-            mat(2, 1) = R(2, 1);
-            mat(2, 2) = R(2, 2);
-            mat(2, 3) = Type(0);
+            mat(3, 0) = Type(0);
 
-            mat(3, 0) = trans_(0);
-            mat(3, 1) = trans_(1);
-            mat(3, 2) = trans_(2);
+            mat(0, 1) = R(0, 1);
+            mat(1, 1) = R(1, 1);
+            mat(2, 1) = R(2, 1);
+            mat(3, 1) = Type(0);
+
+            mat(0, 2) = R(0, 2);
+            mat(1, 2) = R(1, 2);
+            mat(2, 2) = R(2, 2);
+            mat(3, 2) = Type(0);
+
+            mat(0, 3) = trans_(0);
+            mat(1, 3) = trans_(1);
+            mat(2, 3) = trans_(2);
             mat(3, 3) = Type(1);
 
             return mat;
         }
 
-        // Transform a point
         Vec3<Type> operator*(const Vec3<Type> &p) const
         {
             return so3_ * p + trans_;
         }
 
-        // Composition of two SE3
-        SE3<Type> operator*(const SE3<Type> &rhs) const
+        SE3 operator*(const SE3 &rhs) const
         {
             // [R1|t1] [R2|t2] = [R1R2 | R1 t2 + t1]
+
             SE3<Type> out;
             out.so3_ = so3_ * rhs.so3_;
             out.trans_ = so3_ * rhs.trans_ + trans_;
             return out;
         }
 
-        // Inverse
         SE3<Type> inverse() const
         {
             // Inv( [R|t] ) = [R^T | -R^T t]
+
             SE3<Type> inv;
             inv.so3_ = so3_.inverse();
             inv.trans_ = inv.so3_ * (trans_ * Type(-1));
             return inv;
         }
 
-        // Get rotation, translation
+        //============================================================
+        // Exponential map SE3: R^6 -> SE3
+        //   xi = (rho, phi) in R^3 x R^3
+        //============================================================
+        static SE3 exp(const Vec6<Type> &xi)
+        {
+            // xi = (rho, phi), each 3D
+            Vec3<Type> rho(xi(0), xi(1), xi(2));
+            Vec3<Type> phi(xi(3), xi(4), xi(5));
+
+            // Rotation part
+            SO3<Type> R = SO3<Type>::exp(phi);
+
+            // Translation part: J_l(phi) * rho
+            Mat3<Type> J = so3LeftJacobian(phi);
+            Vec3<Type> t = J * rho;
+
+            return SE3(R, t);
+        }
+
         SO3<Type> &so3() { return so3_; }
         const SO3<Type> &so3() const { return so3_; }
         Vec3<Type> &translation() { return trans_; }
@@ -1242,26 +1196,5 @@ namespace linalg
         SO3<Type> so3_;
         Vec3<Type> trans_;
     };
-
-    //============================================================
-    // Exponential map SE3: R^6 -> SE3
-    //   xi = (rho, phi) in R^3 x R^3
-    //============================================================
-    template <typename Type>
-    SE3<Type> se3Exp(const Vec6<Type> &xi)
-    {
-        // xi = (rho, phi), each 3D
-        Vec3<Type> rho(xi(0), xi(1), xi(2));
-        Vec3<Type> phi(xi(3), xi(4), xi(5));
-
-        // Rotation part
-        SO3<Type> R = so3Exp(phi);
-
-        // Translation part: J_l(phi) * rho
-        Mat3<Type> J = so3LeftJacobian(phi);
-        Vec3<Type> t = J * rho;
-
-        return SE3<Type>(R, t);
-    }
 
 } // namespace linalg
