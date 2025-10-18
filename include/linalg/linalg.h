@@ -1095,6 +1095,20 @@ namespace linalg
             trans_ = t;
         }
 
+        SE3(const Mat4<Type> &T)
+        {
+            Mat3<Type> R;
+            for (int r = 0; r < 3; r++)
+                for (int c = 0; c < 3; c++)
+                    R(r, c) = T(r, c);
+            Vec3<Type> t;
+            for (int r = 0; r < 3; r++)
+                t(r) = T(r, 3);
+
+            so3_ = SO3<Type>(R);
+            trans_ = t;
+        }
+
         SE3(Type *r_data, Type *t_data)
         {
             so3_ = SO3<Type>(r_data[0], r_data[1], r_data[2], r_data[3]);
