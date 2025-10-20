@@ -369,6 +369,11 @@ namespace linalg
             result(1) = (*this)(1) + rhs(1);
             return result;
         }
+
+        Type cross(const Vec2 &rhs) const
+        {
+            return (*this)(0) * rhs(1) - (*this)(1) * rhs(0);
+        }
     };
 
     template <typename Type>
