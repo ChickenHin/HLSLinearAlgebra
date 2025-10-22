@@ -116,11 +116,6 @@ namespace linalg
             return result;
         }
 
-        // Dimension accessors
-        static constexpr int rows() { return _rows; }
-        static constexpr int cols() { return _cols; }
-        static constexpr int size() { return _rows * _cols; }
-
         // Transpose
         Mat<Type, _cols, _rows> transpose() const
         {
@@ -262,6 +257,11 @@ namespace linalg
         {
             return data_;
         }
+
+        // Dimension accessors
+        static constexpr int rows() { return _rows; }
+        static constexpr int cols() { return _cols; }
+        static constexpr int size() { return _rows * _cols; }
 
     protected:
         Type &get_(int r, int c)
