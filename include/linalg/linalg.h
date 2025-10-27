@@ -219,20 +219,23 @@ namespace linalg
         // Element accessors (row, col)
         Type &operator()(int r, int c)
         {
-            // #pragma HLS INLINE
+#pragma HLS inline
+
             return get_(r, c);
         }
 
         Type operator()(int r, int c) const
         {
-            // #pragma HLS INLINE
+#pragma HLS inline
+
             return get_(r, c);
         }
 
         // For vector-like usage (assumes single column, i.e. col = 0)
         Type &operator()(int r)
         {
-// #pragma HLS INLINE
+#pragma HLS inline
+
 #ifndef USE_VITIS
             static_assert(_cols == 1, "Single-index operator() only valid for Nx1 matrices (vectors)");
 #endif
@@ -241,7 +244,8 @@ namespace linalg
 
         Type operator()(int r) const
         {
-// #pragma HLS INLINE
+#pragma HLS inline
+
 #ifndef USE_VITIS
             static_assert(_cols == 1, "Single-index operator() only valid for Nx1 matrices (vectors)");
 #endif
@@ -266,7 +270,7 @@ namespace linalg
     protected:
         Type &get_(int r, int c)
         {
-            // #pragma HLS INLINE
+#pragma HLS inline
             // column major
             //  return data_[r * _cols + c];
             // row major
@@ -275,7 +279,7 @@ namespace linalg
 
         Type get_(int r, int c) const
         {
-            // #pragma HLS INLINE
+#pragma HLS inline
             // column major
             //  return data_[r * _cols + c];
             // row major
@@ -356,6 +360,8 @@ namespace linalg
         template <typename OtherType>
         Vec2 operator*(const OtherType &s) const
         {
+#pragma HLS inline
+
             Vec2 result;
             result(0) = (*this)(0) * s;
             result(1) = (*this)(1) * s;
@@ -387,6 +393,8 @@ namespace linalg
     template <typename Type>
     Vec2<Type> operator*(Type s, const Vec2<Type> &m)
     {
+#pragma HLS inline
+
         return m * s;
     }
 
@@ -711,7 +719,8 @@ namespace linalg
         template <class OtherType>
         Vec4<Type> operator*(const Vec4<OtherType> &rhs) const
         {
-            // #pragma HLS INLINE
+#pragma HLS inline
+
             Vec4<Type> result;
             result(0) = rhs(0) * (*this)(0, 0) + rhs(1) * (*this)(0, 1) + rhs(2) * (*this)(0, 2) + rhs(3) * (*this)(0, 3);
             result(1) = rhs(0) * (*this)(1, 0) + rhs(1) * (*this)(1, 1) + rhs(2) * (*this)(1, 2) + rhs(3) * (*this)(1, 3);
@@ -722,6 +731,7 @@ namespace linalg
 
         Mat4 operator*(const Mat4 &rhs) const
         {
+#pragma HLS inline
             // #pragma HLS INLINE
             return Mat<Type, 4, 4>::operator*(rhs);
         }
