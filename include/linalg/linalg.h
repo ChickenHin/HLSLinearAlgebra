@@ -342,6 +342,7 @@ namespace linalg
         }
     };
 
+    /*
     template <typename Type>
     class Vec2 : public Mat<Type, 2, 1>
     {
@@ -388,6 +389,80 @@ namespace linalg
         {
             return (*this)(0) * rhs(1) - (*this)(1) * rhs(0);
         }
+    };
+    */
+
+    template <typename Type>
+    class Vec2
+    {
+    public:
+        Vec2() {}
+        Vec2(Type x, Type y)
+        {
+#pragma HLS inline
+            x_ = x;
+            y_ = y;
+        }
+
+        Type &operator()(int r)
+        {
+#pragma HLS inline
+            if (r == 0)
+                return x_;
+            else
+                return y_;
+        }
+
+        Type operator()(int r) const
+        {
+#pragma HLS inline
+            if (r == 0)
+                return x_;
+            else
+                return y_;
+        }
+
+        template <typename OtherType>
+        Vec2 operator*(const OtherType &s) const
+        {
+#pragma HLS inline
+
+            Vec2 result;
+            result.x_ = x_ * s;
+            result.y_ = y_ * s;
+            return result;
+        }
+
+        Vec2 operator+(const Vec2 &rhs) const
+        {
+#pragma HLS inline
+
+            Vec2 result;
+            result.x_ = x_ + rhs.x_;
+            result.y_ = y_ + rhs.y_;
+            return result;
+        }
+
+        Vec2 operator-(const Vec2 &rhs) const
+        {
+#pragma HLS inline
+
+            Vec2 result;
+            result.x_ = x_ - rhs.x_;
+            result.y_ = y_ - rhs.y_;
+            return result;
+        }
+
+        Type cross(const Vec2 &rhs) const
+        {
+#pragma HLS inline
+
+            return x_ * rhs.y_ - y_ * rhs.x_;
+        }
+
+    private:
+        Type x_;
+        Type y_;
     };
 
     template <typename Type>
