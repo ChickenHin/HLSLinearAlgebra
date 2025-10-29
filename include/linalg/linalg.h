@@ -794,21 +794,63 @@ namespace linalg
         template <class OtherType>
         Vec4<Type> operator*(const Vec4<OtherType> &rhs) const
         {
-#pragma HLS inline
+#pragma HLS inline off
 
+            /*
             Vec4<Type> result;
             result(0) = rhs(0) * (*this)(0, 0) + rhs(1) * (*this)(0, 1) + rhs(2) * (*this)(0, 2) + rhs(3) * (*this)(0, 3);
             result(1) = rhs(0) * (*this)(1, 0) + rhs(1) * (*this)(1, 1) + rhs(2) * (*this)(1, 2) + rhs(3) * (*this)(1, 3);
             result(2) = rhs(0) * (*this)(2, 0) + rhs(1) * (*this)(2, 1) + rhs(2) * (*this)(2, 2) + rhs(3) * (*this)(2, 3);
             result(3) = rhs(0) * (*this)(3, 0) + rhs(1) * (*this)(3, 1) + rhs(2) * (*this)(3, 2) + rhs(3) * (*this)(3, 3);
             return result;
+            */
+
+            Vec4<Type> result;
+        mat4_mult_loop_c:
+            for (int c = 0; c < 4; c++)
+            {
+                Type acc = Type(0.0f);
+#pragma HLS PIPELINE off
+            mat4_mult_loop_k:
+                for (int k = 0; k < 4; k++)
+                {
+#pragma HLS PIPELINE off
+                    acc += this->get_(c, k) * rhs(k);
+                }
+                result(c) = acc;
+            }
+
+            return result;
         }
 
         Mat4 operator*(const Mat4 &rhs) const
         {
-#pragma HLS inline
-            // #pragma HLS INLINE
-            return Mat<Type, 4, 4>::operator*(rhs);
+            // #pragma HLS inline
+            //  #pragma HLS INLINE
+            // return Mat<Type, 4, 4>::operator*(rhs);
+
+#pragma HLS INLINE off
+
+            Mat4 result;
+        mat4_mult_loop_r:
+            for (int r = 0; r < 4; r++)
+            {
+#pragma HLS PIPELINE off
+            mat4_mult_loop_c:
+                for (int c = 0; c < 4; c++)
+                {
+                    Type acc = Type(0.0f);
+#pragma HLS PIPELINE off
+                mat4_mult_loop_k:
+                    for (int k = 0; k < 4; k++)
+                    {
+#pragma HLS PIPELINE off
+                        acc += this->get_(r, k) * rhs(k, c);
+                    }
+                    result(r, c) = acc;
+                }
+            }
+            return result;
         }
     };
 
