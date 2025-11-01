@@ -455,7 +455,7 @@ namespace linalg
 
         Type cross(const Vec2 &rhs) const
         {
-            // #pragma HLS inline
+#pragma HLS inline
 
             return x_ * rhs.y_ - y_ * rhs.x_;
         }
