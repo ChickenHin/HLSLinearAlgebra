@@ -39,7 +39,7 @@ namespace linalg
         mat_const_data_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
-#pragma HLS UNROLL
+                // #pragma HLS UNROLL
                 data_[i] = data[i];
             }
         }
@@ -51,7 +51,7 @@ namespace linalg
         mat_const_other_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
-#pragma HLS UNROLL
+                // #pragma HLS UNROLL
                 data_[i] = Type(other.data()[i]);
             }
         }
@@ -83,7 +83,7 @@ namespace linalg
         mat_assign_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
-#pragma HLS UNROLL
+                // #pragma HLS UNROLL
                 data_[i] = Type(other.data()[i]);
             }
 
@@ -97,7 +97,7 @@ namespace linalg
         mat_zero_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
-#pragma HLS UNROLL
+                // #pragma HLS UNROLL
                 result.data_[i] = Type(0);
             }
             return result;
@@ -111,7 +111,7 @@ namespace linalg
             Mat result = Zero();
         mat_identity_loop_i:
             for (int i = 0; i < _rows; i++)
-#pragma HLS UNROLL
+                // #pragma HLS UNROLL
                 result(i, i) = Type(1);
             return result;
         }
@@ -455,7 +455,7 @@ namespace linalg
 
         Type cross(const Vec2 &rhs) const
         {
-#pragma HLS inline
+            // #pragma HLS inline
 
             return x_ * rhs.y_ - y_ * rhs.x_;
         }
