@@ -878,7 +878,8 @@ namespace linalg
     public:
         Quaternion() : w_(Type(1)), x_(Type(0)), y_(Type(0)), z_(Type(0)) {}
 
-        Quaternion(Type w, Type x, Type y, Type z)
+        template <typename T2>
+        Quaternion(T2 w, T2 x, T2 y, T2 z)
             : w_(w), x_(x), y_(y), z_(z)
         {
         }
