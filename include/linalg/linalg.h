@@ -219,14 +219,14 @@ namespace linalg
         // Element accessors (row, col)
         Type &operator()(int r, int c)
         {
-            // #pragma HLS inline
+#pragma HLS inline
 
             return get_(r, c);
         }
 
         Type operator()(int r, int c) const
         {
-            // #pragma HLS inline
+#pragma HLS inline
 
             return get_(r, c);
         }
@@ -234,7 +234,7 @@ namespace linalg
         // For vector-like usage (assumes single column, i.e. col = 0)
         Type &operator()(int r)
         {
-            // #pragma HLS inline
+#pragma HLS inline
 
 #ifndef USE_VITIS
             static_assert(_cols == 1, "Single-index operator() only valid for Nx1 matrices (vectors)");
@@ -244,7 +244,7 @@ namespace linalg
 
         Type operator()(int r) const
         {
-            // #pragma HLS inline
+#pragma HLS inline
 
 #ifndef USE_VITIS
             static_assert(_cols == 1, "Single-index operator() only valid for Nx1 matrices (vectors)");
@@ -270,7 +270,7 @@ namespace linalg
     protected:
         Type &get_(int r, int c)
         {
-            // #pragma HLS inline
+#pragma HLS inline
             //  column major
             //   return data_[r * _cols + c];
             //  row major
@@ -279,7 +279,7 @@ namespace linalg
 
         Type get_(int r, int c) const
         {
-            // #pragma HLS inline
+#pragma HLS inline
             //  column major
             //   return data_[r * _cols + c];
             //  row major
@@ -810,11 +810,11 @@ namespace linalg
             for (int c = 0; c < 4; c++)
             {
                 Type acc = Type(0.0f);
-#pragma HLS PIPELINE off
+                // #pragma HLS PIPELINE off
             mat4_mult_loop_k:
                 for (int k = 0; k < 4; k++)
                 {
-#pragma HLS PIPELINE off
+                    // #pragma HLS PIPELINE off
                     acc += this->get_(c, k) * rhs(k);
                 }
                 result(c) = acc;
@@ -835,16 +835,16 @@ namespace linalg
         mat4_mult_loop_r:
             for (int r = 0; r < 4; r++)
             {
-#pragma HLS PIPELINE off
+                // #pragma HLS PIPELINE off
             mat4_mult_loop_c:
                 for (int c = 0; c < 4; c++)
                 {
                     Type acc = Type(0.0f);
-#pragma HLS PIPELINE off
+                    // #pragma HLS PIPELINE off
                 mat4_mult_loop_k:
                     for (int k = 0; k < 4; k++)
                     {
-#pragma HLS PIPELINE off
+                        // #pragma HLS PIPELINE off
                         acc += this->get_(r, k) * rhs(k, c);
                     }
                     result(r, c) = acc;
@@ -1167,7 +1167,7 @@ namespace linalg
     template <typename Type>
     Mat3<Type> outerProduct(const Vec3<Type> &a, const Vec3<Type> &b)
     {
-        Mat3<Type> m = Mat3<Type>::Zero();
+        Mat3<Type> m; // = Mat3<Type>::Zero();
     mat3_out_loop_r:
         for (int r = 0; r < 3; r++)
         mat_out_loop_c:
@@ -1266,14 +1266,20 @@ namespace linalg
             Mat4<Type> mat; // = Mat4<Type>::Zero();
             Mat3<Type> R = so3_.matrix();
 
-            // se3_matrix_loop_r:
-            //     for (int r = 0; r < 3; r++)
-            //         // #pragma HLS UNROLL
-            //     se3_matrix_loop_c:
-            //         for (int c = 0; c < 3; c++)
-            //  #pragma HLS UNROLL
-            //            mat(r, c) = R(r, c);
+        se3_matrix_loop_r:
+            for (int r = 0; r < 3; r++)
+            {
+                mat(r, 3) = trans_(r);
+                mat(3, r) = Type(0);
+            se3_matrix_loop_c:
+                for (int c = 0; c < 3; c++)
+                {
+                    mat(r, c) = R(r, c);
+                }
+            }
+            mat(3, 3) = Type(1);
 
+            /*
             mat(0, 0) = R(0, 0);
             mat(1, 0) = R(1, 0);
             mat(2, 0) = R(2, 0);
@@ -1293,6 +1299,7 @@ namespace linalg
             mat(1, 3) = trans_(1);
             mat(2, 3) = trans_(2);
             mat(3, 3) = Type(1);
+            */
 
             return mat;
         }
