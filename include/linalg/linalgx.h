@@ -126,7 +126,7 @@ namespace linalg
         {
             assert(rows_ == other.rows() && cols_ == other.cols());
 
-            Matx result;
+            Matx result(rows_, cols_);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
                     result(r, c) = get_(r, c) + other(r, c);
@@ -137,12 +137,10 @@ namespace linalg
         {
             assert(rows_ == other.rows() && cols_ == other.cols());
 
-            Matx result;
-
+            Matx result(rows_, cols_);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
                     result(r, c) = get_(r, c) - other(r, c);
-
             return result;
         }
 
@@ -150,11 +148,9 @@ namespace linalg
         OutType conv(const Matx<InType> &rhs) const
         {
             OutType result = Type(0);
-
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
                     result += OutType(get_(r, c) * rhs(r, c));
-
             return result;
         }
 
@@ -164,11 +160,9 @@ namespace linalg
             assert(rows_ == rhs.rows() && cols_ == rhs.cols());
 
             Type result = Type(0);
-
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
                     result += get_(r, c) * rhs(r, c);
-
             return result;
         }
 
@@ -176,34 +170,29 @@ namespace linalg
         {
             assert(rows_ == other.rows() && cols_ == other.cols());
 
+            Matx result(rows_, cols_);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
-                    get_(r, c) += other(r, c);
-
-            return *this;
+                    result(r, c) = get_(r, c) + other(r, c);
+            return result;
         }
 
         template <typename Type2>
         Matx operator*=(const Type2 &s)
         {
+            Matx result(rows_, cols_);
             for (int c = 0; c < cols_; c++)
-            {
                 for (int r = 0; r < rows_; r++)
-                {
-                    get_(r, c) *= s;
-                }
-            }
-            return *this;
+                    result(r, c) = get_(r, c) * s;
+            return result;
         }
 
         Matx operator-() const
         {
-            Matx result = Zero(rows_, cols_);
-
+            Matx result(rows_, cols_);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
                     result(r, c) = -get_(r, c);
-
             return result;
         }
 
@@ -211,11 +200,9 @@ namespace linalg
         Type norm() const
         {
             Type sum = Type(0);
-
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
                     sum += get_(r, c) * get_(r, c);
-
             return std::sqrt(sum);
         }
 
@@ -263,7 +250,6 @@ namespace linalg
     protected:
         Type &get_(int r, int c)
         {
-#pragma HLS inline
             //  column major
             //   return data_[r * _cols + c];
             //  row major
@@ -272,7 +258,6 @@ namespace linalg
 
         Type get_(int r, int c) const
         {
-#pragma HLS inline
             //  column major
             //   return data_[r * _cols + c];
             //  row major
@@ -287,14 +272,9 @@ namespace linalg
     Matx<Type> operator*(const Matx<Type> &m, Type s)
     {
         Matx<Type> result(m.rows(), m.cols());
-
         for (int c = 0; c < m.cols(); c++)
-        {
             for (int r = 0; r < m.rows(); r++)
-            {
                 result(r, c) = m(r, c) * s;
-            }
-        }
         return result;
     }
 
@@ -308,11 +288,9 @@ namespace linalg
     Matx<Type> operator/(const Matx<Type> &m, Type s)
     {
         Matx<Type> result(m.rows(), m.cols());
-
         for (int c = 0; c < m.cols(); c++)
             for (int r = 0; r < m.rows(); r++)
                 result(r, c) = m(r, c) / s;
-                
         return result;
     }
 }
