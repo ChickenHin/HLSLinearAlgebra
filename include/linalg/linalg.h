@@ -216,6 +216,17 @@ namespace linalg
             return math::sqrt(sum);
         }
 
+        Mat sqrt() const
+        {
+            Mat result;
+        mat_sqrt_loop_c:
+            for (int c = 0; c < _cols; c++)
+            mat_sqrt_loop_r:
+                for (int r = 0; r < _rows; r++)
+                    result(r, c) = math::sqrt(get_(r, c));
+            return result;
+        }
+
         // Element accessors (row, col)
         Type &operator()(int r, int c)
         {
@@ -500,7 +511,7 @@ namespace linalg
         }
 
         template <typename OtherType>
-        Vec3 operator*(const Mat<OtherType, 3, 1> &other)
+        Vec3 operator*(const Mat<OtherType, 3, 1> &other) const
         {
             Vec3 result;
             result(0) = (*this)(0) * other(0);
@@ -526,6 +537,26 @@ namespace linalg
             result(0) = (*this)(0) - other(0);
             result(1) = (*this)(1) - other(1);
             result(2) = (*this)(2) - other(2);
+            return result;
+        }
+
+        template <typename OtherType>
+        Vec3 operator*=(const OtherType &other) const
+        {
+            Vec3 result;
+            result(0) = (*this)(0) * other;
+            result(1) = (*this)(1) * other;
+            result(2) = (*this)(2) * other;
+            return result;
+        }
+
+        template <typename OtherType>
+        Vec3 operator/=(const OtherType &other) const
+        {
+            Vec3 result;
+            result(0) = (*this)(0) / other;
+            result(1) = (*this)(1) / other;
+            result(2) = (*this)(2) / other;
             return result;
         }
 
@@ -626,6 +657,18 @@ namespace linalg
             (*this)(3) = a;
             (*this)(4) = b;
             (*this)(5) = c;
+        }
+        Vec6(const Mat<Type, 6, 1> &vec)
+            : Mat<Type, 6, 1>(vec) // call the base-class copy constructor
+        {
+        }
+
+        Type dot(Vec6 &rhs)
+        {
+            Type acc = Type(0);
+            for (int i = 0; i < 6; i++)
+                acc += this->get_(i, 0) * rhs(i);
+            return acc;
         }
     };
 
@@ -859,6 +902,10 @@ namespace linalg
     {
     public:
         Mat6() : Mat<Type, 6, 6>() {}
+        Mat6(const Mat<Type, 6, 6> &mat)
+            : Mat<Type, 6, 6>(mat) // call the base-class copy constructor
+        {
+        }
     };
 
     template <typename Type>
@@ -1075,6 +1122,39 @@ namespace linalg
             Mat3<Type> R = Mat3<Type>::Identity() * c + outerProduct(axis, axis) * (Type(1) - c) + wedge(axis) * s;
 
             return SO3(R);
+        }
+
+        static Vec3<Type> log(const SO3<Type> &R)
+        {
+            const Quaternion<Type> &q = R.unit_quaternion();
+
+            Type qw = q.w();
+            Type qx = q.x();
+            Type qy = q.y();
+            Type qz = q.z();
+
+            // Vector part magnitude = sin(theta/2)
+            Type sin_half_theta = math::sqrt(qx * qx + qy * qy + qz * qz);
+
+            // Handle the small-angle case separately to avoid division by zero
+            const Type eps = Type(1e-12);
+
+            if (sin_half_theta < eps)
+            {
+                // For very small angles:
+                // q ≈ [1, 0.5 * phi]  =>  phi ≈ 2 * v
+                return Vec3<Type>(Type(2) * qx, Type(2) * qy, Type(2) * qz);
+            }
+
+            // General case
+            // theta = 2 * atan2(||v||, w)
+            Type theta = Type(2) * math::atan2(sin_half_theta, qw);
+
+            // Axis = v / sin(theta/2)
+            // phi = theta * axis = theta / sin(theta/2) * v
+            Type k = theta / sin_half_theta;
+
+            return Vec3<Type>(qx * k, qy * k, qz * k);
         }
 
         /*
@@ -1347,6 +1427,36 @@ namespace linalg
             Vec3<Type> t = J * rho;
 
             return SE3(R, t);
+        }
+
+        //============================================================
+        // Logarithm map SE3: SE3 -> R^6
+        //   xi = (rho, phi) in R^3 x R^3
+        //   where R = exp(phi^) and t = J_l(phi) * rho
+        //============================================================
+        Vec6<Type> log() const
+        {
+            Vec6<Type> xi;
+
+            // Rotation part
+            Vec3<Type> phi = SO3<Type>::log(so3_);
+
+            // Translation part: rho = J_l(phi)^{-1} * t
+            Mat3<Type> J = so3LeftJacobian(phi);
+
+            // Simple & general: use matrix inverse (if you don't have a dedicated J^{-1})
+            Mat3<Type> J_inv = J.inverse();
+            Vec3<Type> rho = J_inv * trans_;
+
+            // Pack into se(3) vector: (rho, phi)
+            xi(0) = rho(0);
+            xi(1) = rho(1);
+            xi(2) = rho(2);
+            xi(3) = phi(0);
+            xi(4) = phi(1);
+            xi(5) = phi(2);
+
+            return xi;
         }
 
         SO3<Type> &so3() { return so3_; }
