@@ -242,27 +242,6 @@ namespace linalg
             return get_(r, c);
         }
 
-        // For vector-like usage (assumes single column, i.e. col = 0)
-        Type &operator()(int r)
-        {
-#pragma HLS inline
-
-#ifndef USE_VITIS
-            static_assert(_cols == 1, "Single-index operator() only valid for Nx1 matrices (vectors)");
-#endif
-            return get_(r, 0);
-        }
-
-        Type operator()(int r) const
-        {
-#pragma HLS inline
-
-#ifndef USE_VITIS
-            static_assert(_cols == 1, "Single-index operator() only valid for Nx1 matrices (vectors)");
-#endif
-            return get_(r, 0);
-        }
-
         Type *data()
         {
             return data_;
@@ -341,6 +320,49 @@ namespace linalg
     //============================================================
     // Various Vector specializations (just Nx1 Mat)
     //============================================================
+
+    enum class VecOrient
+    {
+        Column,
+        Row
+    };
+
+    template <typename Type, int Size, VecOrient Orient = VecOrient::Column>
+    class Vec : public Mat<
+                    Type,
+                    (Orient == VecOrient::Column ? Size : 1),
+                    (Orient == VecOrient::Column ? 1 : Size)>
+    {
+    public:
+        using Base = Mat<
+            Type,
+            (Orient == VecOrient::Column ? Size : 1),
+            (Orient == VecOrient::Column ? 1 : Size)>;
+
+        Vec() : Base() {}
+        Vec(const Base &mat) : Base(mat) {}
+
+        // 1D indexing, orientation-agnostic
+        Type &operator()(int i)
+        {
+#pragma HLS inline
+            return this->data()[i];
+        }
+
+        Type operator()(int i) const
+        {
+#pragma HLS inline
+            return this->data()[i];
+        }
+
+        Type dot(Vec &rhs)
+        {
+            Type acc = Type(0);
+            for (int i = 0; i < 6; i++)
+                acc += this->data()[i] * rhs(i);
+            return acc;
+        }
+    };
 
     template <typename Type>
     class Vec1 : public Mat<Type, 1, 1>
@@ -485,13 +507,13 @@ namespace linalg
     }
 
     template <typename Type>
-    class Vec3 : public Mat<Type, 3, 1>
+    class Vec3 : public Vec<Type, 3>
     {
     public:
-        Vec3() : Mat<Type, 3, 1>() {}
+        Vec3() : Vec<Type, 3>() {}
         template <typename OtherType>
         Vec3(const Mat<OtherType, 3, 1> &mat)
-            : Mat<Type, 3, 1>(mat) // call the base-class copy constructor
+            : VecC<Type, 3>(mat) // call the base-class copy constructor
         {
         }
 
@@ -505,9 +527,9 @@ namespace linalg
 
         bool operator==(const Mat<Type, 3, 1> &other) const
         {
-            return ((*this)(0) == other(0) &&
-                    (*this)(1) == other(1) &&
-                    (*this)(2) == other(2));
+            return ((*this)(0) == other(0, 0) &&
+                    (*this)(1) == other(1, 0) &&
+                    (*this)(2) == other(2, 0));
         }
 
         template <typename OtherType>
@@ -524,9 +546,9 @@ namespace linalg
         Vec3 operator+(const Mat<OtherType, 3, 1> &other) const
         {
             Vec3 result;
-            result(0) = (*this)(0) + other(0);
-            result(1) = (*this)(1) + other(1);
-            result(2) = (*this)(2) + other(2);
+            result(0) = (*this)(0) + other(0, 0);
+            result(1) = (*this)(1) + other(1, 0);
+            result(2) = (*this)(2) + other(2, 0);
             return result;
         }
 
@@ -534,9 +556,9 @@ namespace linalg
         Vec3 operator-(const Mat<OtherType, 3, 1> &other) const
         {
             Vec3 result;
-            result(0) = (*this)(0) - other(0);
-            result(1) = (*this)(1) - other(1);
-            result(2) = (*this)(2) - other(2);
+            result(0) = (*this)(0) - other(0, 0);
+            result(1) = (*this)(1) - other(1, 0);
+            result(2) = (*this)(2) - other(2, 0);
             return result;
         }
 
@@ -570,7 +592,7 @@ namespace linalg
         }
 
         template <typename OtherType>
-        Type dot(const Mat<OtherType, 3, 1> &other)
+        Type dot(const VecC<OtherType, 3> &other)
         {
             return (*this)(0) * other(0) + (*this)(1) * other(1) + (*this)(2) * other(2);
         }
@@ -593,10 +615,10 @@ namespace linalg
     };
 
     template <typename Type>
-    class Vec4 : public Mat<Type, 4, 1>
+    class Vec4 : public Vec<Type, 4>
     {
     public:
-        Vec4() : Mat<Type, 4, 1>() {}
+        Vec4() : Vec<Type, 4>() {}
         Vec4(const Mat<Type, 4, 1> &mat)
             : Mat<Type, 4, 1>(mat) // call the base-class copy constructor
         {
@@ -630,25 +652,10 @@ namespace linalg
     };
 
     template <typename Type>
-    class Vec5 : public Mat<Type, 5, 1>
+    class Vec6 : public VecC<Type, 6>
     {
     public:
-        Vec5() : Mat<Type, 5, 1>() {}
-        Vec5(Type x, Type y, Type z, Type w, Type a)
-        {
-            (*this)(0) = x;
-            (*this)(1) = y;
-            (*this)(2) = z;
-            (*this)(3) = w;
-            (*this)(4) = a;
-        }
-    };
-
-    template <typename Type>
-    class Vec6 : public Mat<Type, 6, 1>
-    {
-    public:
-        Vec6() : Mat<Type, 6, 1>() {}
+        Vec6() : VecC<Type, 6>() {}
         Vec6(Type x, Type y, Type z, Type a, Type b, Type c)
         {
             (*this)(0) = x;
@@ -659,7 +666,7 @@ namespace linalg
             (*this)(5) = c;
         }
         Vec6(const Mat<Type, 6, 1> &vec)
-            : Mat<Type, 6, 1>(vec) // call the base-class copy constructor
+            : VecC<Type, 6>(vec) // call the base-class copy constructor
         {
         }
 
@@ -673,10 +680,10 @@ namespace linalg
     };
 
     template <typename Type>
-    class Vec8 : public Mat<Type, 8, 1>
+    class Vec8 : public VecC<Type, 8>
     {
     public:
-        Vec8() : Mat<Type, 8, 1>() {}
+        Vec8() : VecC<Type, 8>() {}
         Vec8(Type x, Type y, Type z, Type a, Type b, Type c, Type d, Type e)
         {
             (*this)(0) = x;

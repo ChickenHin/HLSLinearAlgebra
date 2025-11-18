@@ -16,39 +16,58 @@ namespace linalg
     class Matx
     {
     public:
-        Matx()
-            : data_(nullptr), rows_(0), cols_(0)
-        {
-        }
+        // Matx()
+        //     : data_(nullptr), rows_(0), cols_(0)
+        //{
+        // }
 
         Matx(int rows, int cols)
             : data_(rows * cols > 0 ? std::make_unique<Type[]>(rows * cols) : nullptr), rows_(rows), cols_(cols)
         {
         }
 
-        template <typename OtherType>
-        Matx(const Matx<OtherType> &other)
+        Matx(const Matx &other)
+            : Matx(other.rows_, other.cols_)
         {
-            assert(other.rows() == rows_ && other.cols() == cols_);
-
-            data_ = std::make_unique<Type[]>(rows_ * cols_);
-
-            for (int i = 0; i < rows_ * cols_; i++)
+            if (data_)
             {
-                data_[i] = Type(other.data()[i]);
+                std::copy(other.data_.get(),
+                          other.data_.get() + rows_ * cols_,
+                          data_.get());
             }
         }
 
-        template <typename OtherType>
-        Matx &operator=(const Matx<OtherType> &other)
+        Matx &operator=(const Matx &other)
         {
-            for (int i = 0; i < rows_ * cols_; i++)
+            if (this == &other)
+                return *this;
+
+            // Reallocate if size changes
+            int newSize = other.rows_ * other.cols_;
+            if (newSize != rows_ * cols_)
             {
-                data_[i] = Type(other.data()[i]);
+                data_.reset();
+                if (newSize > 0)
+                {
+                    data_ = std::make_unique<Type[]>(newSize);
+                }
+            }
+
+            rows_ = other.rows_;
+            cols_ = other.cols_;
+
+            if (data_)
+            {
+                std::copy(other.data_.get(),
+                          other.data_.get() + rows_ * cols_,
+                          data_.get());
             }
 
             return *this;
         }
+
+        // Matx(const Matx &) = delete;
+        // Matx &operator=(const Matx &) = delete;
 
         void setZero()
         {
@@ -72,11 +91,8 @@ namespace linalg
         static Matx Zero(int rows, int cols)
         {
             Matx result(rows, cols);
-
             for (int i = 0; i < rows * cols; i++)
-            {
                 result.data_[i] = Type(0);
-            }
             return result;
         }
 
@@ -85,10 +101,8 @@ namespace linalg
             assert(rows == cols);
 
             Matx result = Zero(rows, cols);
-
             for (int i = 0; i < rows; i++)
                 result(i, i) = Type(1);
-
             return result;
         }
 
@@ -196,6 +210,15 @@ namespace linalg
             return result;
         }
 
+        Matx sqrt()
+        {
+            Matx result(rows_, cols_);
+            for (int c = 0; c < cols_; c++)
+                for (int r = 0; r < rows_; r++)
+                    result(r, c) = std::sqrt(get_(r, c));
+            return result;
+        }
+
         // Frobenius norm
         Type norm() const
         {
@@ -293,4 +316,64 @@ namespace linalg
                 result(r, c) = m(r, c) / s;
         return result;
     }
+
+    template <typename Type>
+    class VecxR : public Matx<Type>
+    {
+    public:
+        VecxR(int cols) : Matx<Type>(1, cols) {}
+        // VecR(const Matx<Type> &mat)
+        //     : Matx<Type>(mat) // call the base-class copy constructor
+        //{
+        // }
+
+        static VecxR Zero(int cols)
+        {
+            VecxR result(cols);
+            for (int i = 0; i < cols; i++)
+                result(i) = Type(0);
+            return result;
+        }
+
+        // Element accessors (row, col)
+        Type &operator()(int c)
+        {
+            return this->get_(0, c);
+        }
+
+        Type operator()(int c) const
+        {
+            return this->get_(0, c);
+        }
+    };
+
+    template <typename Type>
+    class VecxC : public Matx<Type>
+    {
+    public:
+        VecxC(int rows) : Matx<Type>(rows, 1) {}
+        // VecxC(const Matx<Type> &mat)
+        //     : Matx<Type>(mat) // call the base-class copy constructor
+        // {
+        //}
+
+        static VecxC Zero(int rows)
+        {
+            VecxC result(rows);
+            for (int i = 0; i < rows; i++)
+                result(i) = Type(0);
+            return result;
+        }
+
+        // Element accessors (row, col)
+        Type &operator()(int r)
+        {
+            return this->get_(r, 0);
+        }
+
+        Type operator()(int r) const
+        {
+            return this->get_(r, 0);
+        }
+    };
 }
