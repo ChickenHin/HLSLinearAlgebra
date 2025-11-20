@@ -61,6 +61,20 @@ namespace linalg
             }
         }
 
+        void setZero()
+        {
+        mat_const_other_loop:
+            for (int y = 0; y < _rows; y++)
+            {
+            mat_const_other_loop_x:
+                for (int x = 0; x < _cols; x++)
+                {
+                    // #pragma HLS UNROLL
+                    (*this)(y, x) = Type(0);
+                }
+            }
+        }
+
         static Mat Zero()
         {
             Mat result;
@@ -173,15 +187,16 @@ namespace linalg
             return result;
         }
 
-        Mat operator+=(const Mat &other) const
+        void operator+=(const Mat &other)
         {
-            Mat result;
         mat_add_loop_c:
             for (int c = 0; c < _cols; c++)
             mat_add_loop_r:
                 for (int r = 0; r < _rows; r++)
-                    result(r, c) = (*this)(r, c) + other(r, c);
-            return result;
+                {
+                    Type val = (*this)(r, c) + other(r, c);
+                    (*this)(r, c) = val;
+                }
         }
 
         Mat operator-(const Mat &other) const
@@ -275,12 +290,12 @@ namespace linalg
             return get_(add);
         }
 
-        Type* data()
+        Type *data()
         {
             return data_;
         }
 
-        const Type* data() const
+        const Type *data() const
         {
             return data_;
         }

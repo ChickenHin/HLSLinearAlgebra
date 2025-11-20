@@ -181,25 +181,21 @@ namespace linalg
             return result;
         }
 
-        Matx operator+=(const Matx &other)
+        void operator+=(const Matx &other)
         {
             assert(rows_ == other.rows() && cols_ == other.cols());
 
-            Matx result(rows_, cols_);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
-                    result(r, c) = (*this)(r, c) + other(r, c);
-            return result;
+                    (*this)(r, c) = (*this)(r, c) + other(r, c);
         }
 
         template <typename Type2>
-        Matx operator*=(const Type2 &s)
+        void operator*=(const Type2 &s)
         {
-            Matx result(rows_, cols_);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
-                    result(r, c) = (*this)(r, c) * s;
-            return result;
+                    (*this)(r, c) = (*this)(r, c) * s;
         }
 
         Matx operator-() const
