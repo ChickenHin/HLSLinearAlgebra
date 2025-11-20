@@ -19,6 +19,8 @@ namespace math = hls;
 namespace math = std;
 #endif
 
+#include "common.h"
+
 namespace linalg
 {
     //============================================================
@@ -33,27 +35,55 @@ namespace linalg
         {
         }
 
-        template <typename OtherType>
-        Mat(const OtherType *data)
+        // template <typename OtherType>
+        // Mat(const OtherType *data)
+        //{
+        // mat_const_data_loop:
+        //     for (int i = 0; i < _rows * _cols; i++)
+        //     {
+        //  #pragma HLS UNROLL
+        //        data_[i] = data[i];
+        //    }
+        //}
+
+        template <typename Type2>
+        Mat(const Mat<Type2, _rows, _cols> &other)
         {
-        mat_const_data_loop:
-            for (int i = 0; i < _rows * _cols; i++)
+        mat_const_other_loop:
+            for (int y = 0; y < _rows; y++)
             {
-                // #pragma HLS UNROLL
-                data_[i] = data[i];
+            mat_const_other_loop_x:
+                for (int x = 0; x < _cols; x++)
+                {
+                    // #pragma HLS UNROLL
+                    (*this)(y, x) = other(y, x);
+                }
             }
         }
 
-        template <typename OtherType>
-        Mat(const Mat<OtherType, _rows, _cols> &other)
+        static Mat Zero()
         {
-
-        mat_const_other_loop:
+            Mat result;
+        mat_zero_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
                 // #pragma HLS UNROLL
-                data_[i] = Type(other.data()[i]);
+                result.data_[i] = Type(0);
             }
+            return result;
+        }
+
+        static Mat Identity()
+        {
+#ifndef USE_VITIS
+            static_assert(_rows == _cols, "Identity only makes sense for square matrices");
+#endif
+            Mat result = Zero();
+        mat_identity_loop_i:
+            for (int i = 0; i < _rows; i++)
+                // #pragma HLS UNROLL
+                result(i, i) = Type(1);
+            return result;
         }
 
         /*
@@ -90,41 +120,15 @@ namespace linalg
             return *this;
         }
 
-        static Mat Zero()
+        bool operator==(const Mat &other) const
         {
-            Mat result;
-
-        mat_zero_loop:
+            bool result = true;
+        mat_eq_loop:
             for (int i = 0; i < _rows * _cols; i++)
             {
                 // #pragma HLS UNROLL
-                result.data_[i] = Type(0);
+                result = result && (data_[i] == other.data_[i]);
             }
-            return result;
-        }
-
-        static Mat Identity()
-        {
-#ifndef USE_VITIS
-            static_assert(_rows == _cols, "Identity only makes sense for square matrices");
-#endif
-            Mat result = Zero();
-        mat_identity_loop_i:
-            for (int i = 0; i < _rows; i++)
-                // #pragma HLS UNROLL
-                result(i, i) = Type(1);
-            return result;
-        }
-
-        // Transpose
-        Mat<Type, _cols, _rows> transpose() const
-        {
-            Mat<Type, _cols, _rows> result;
-        mat_tran_loop_r:
-            for (int r = 0; r < _rows; r++)
-            mat_tran_loop_c:
-                for (int c = 0; c < _cols; c++)
-                    result(c, r) = get_(r, c);
             return result;
         }
 
@@ -150,7 +154,7 @@ namespace linalg
                     for (int k = 0; k < _cols; k++)
                     {
                         // #pragma HLS LOOP_FLATTEN
-                        acc += get_(r, k) * rhs(k, c);
+                        acc += (*this)(r, k) * rhs(k, c);
                     }
                     result(r, c) = acc;
                 }
@@ -165,7 +169,18 @@ namespace linalg
             for (int c = 0; c < _cols; c++)
             mat_add_loop_r:
                 for (int r = 0; r < _rows; r++)
-                    result(r, c) = get_(r, c) + other(r, c);
+                    result(r, c) = (*this)(r, c) + other(r, c);
+            return result;
+        }
+
+        Mat operator+=(const Mat &other) const
+        {
+            Mat result;
+        mat_add_loop_c:
+            for (int c = 0; c < _cols; c++)
+            mat_add_loop_r:
+                for (int r = 0; r < _rows; r++)
+                    result(r, c) = (*this)(r, c) + other(r, c);
             return result;
         }
 
@@ -176,7 +191,18 @@ namespace linalg
             for (int c = 0; c < _cols; c++)
             mat_sub_loop_r:
                 for (int r = 0; r < _rows; r++)
-                    result(r, c) = get_(r, c) - other(r, c);
+                    result(r, c) = (*this)(r, c) - other(r, c);
+            return result;
+        }
+
+        Mat<Type, _cols, _rows> transpose() const
+        {
+            Mat<Type, _cols, _rows> result;
+        mat_tran_loop_r:
+            for (int r = 0; r < _rows; r++)
+            mat_tran_loop_c:
+                for (int c = 0; c < _cols; c++)
+                    result(c, r) = (*this)(r, c);
             return result;
         }
 
@@ -188,8 +214,7 @@ namespace linalg
             for (int c = 0; c < _cols; c++)
             mat_conv_loop_r:
                 for (int r = 0; r < _rows; r++)
-                    result += OutType(get_(r, c) * rhs(r, c));
-
+                    result += OutType((*this)(r, c) * rhs(r, c));
             return result;
         }
 
@@ -200,7 +225,7 @@ namespace linalg
             for (int c = 0; c < _cols; c++)
             mat_neg_loop_r:
                 for (int r = 0; r < _rows; r++)
-                    result(r, c) = -get_(r, c);
+                    result(r, c) = -(*this)(r, c);
             return result;
         }
 
@@ -223,7 +248,7 @@ namespace linalg
             for (int c = 0; c < _cols; c++)
             mat_sqrt_loop_r:
                 for (int r = 0; r < _rows; r++)
-                    result(r, c) = math::sqrt(get_(r, c));
+                    result(r, c) = math::sqrt((*this)(r, c));
             return result;
         }
 
@@ -231,23 +256,31 @@ namespace linalg
         Type &operator()(int r, int c)
         {
 #pragma HLS inline
+            //  column major
+            //   int add = r * _cols + c;
+            //  row major
+            int add = c * _rows + r;
 
-            return get_(r, c);
+            return get_(add);
         }
 
         Type operator()(int r, int c) const
         {
 #pragma HLS inline
+            //  column major
+            //   int add = r * _cols + c;
+            //  row major
+            int add = c * _rows + r;
 
-            return get_(r, c);
+            return get_(add);
         }
 
-        Type *data()
+        Type* data()
         {
             return data_;
         }
 
-        const Type *data() const
+        const Type* data() const
         {
             return data_;
         }
@@ -258,22 +291,16 @@ namespace linalg
         static constexpr int size() { return _rows * _cols; }
 
     protected:
-        Type &get_(int r, int c)
+        Type &get_(int add)
         {
 #pragma HLS inline
-            //  column major
-            //   return data_[r * _cols + c];
-            //  row major
-            return data_[c * _rows + r];
+            return data_[add];
         }
 
-        Type get_(int r, int c) const
+        Type get_(int add) const
         {
 #pragma HLS inline
-            //  column major
-            //   return data_[r * _cols + c];
-            //  row major
-            return data_[c * _rows + r];
+            return data_[add];
         }
 
         Type data_[_rows * _cols];
@@ -317,15 +344,49 @@ namespace linalg
         return result;
     }
 
+    template <typename Type, int rows, int cols>
+    Mat<Type, rows, cols> operator*=(const Mat<Type, rows, cols> &m, Type s)
+    {
+        // #pragma HLS INLINE
+        Mat<Type, rows, cols> result;
+    mat_fmult_loop_c:
+        for (int c = 0; c < cols; c++)
+        {
+        mat_fmult_loop_r:
+            for (int r = 0; r < rows; r++)
+            {
+                // #pragma HLS PIPELINE II = 1
+
+                // #pragma HLS LOOP_FLATTEN
+                result(r, c) = m(r, c) * s;
+            }
+        }
+        return result;
+    }
+
+    template <typename Type, int rows, int cols>
+    Mat<Type, rows, cols> operator/=(const Mat<Type, rows, cols> &m, Type s)
+    {
+        // #pragma HLS INLINE
+        Mat<Type, rows, cols> result;
+    mat_fmult_loop_c:
+        for (int c = 0; c < cols; c++)
+        {
+        mat_fmult_loop_r:
+            for (int r = 0; r < rows; r++)
+            {
+                // #pragma HLS PIPELINE II = 1
+
+                // #pragma HLS LOOP_FLATTEN
+                result(r, c) = m(r, c) / s;
+            }
+        }
+        return result;
+    }
+
     //============================================================
     // Various Vector specializations (just Nx1 Mat)
     //============================================================
-
-    enum class VecOrient
-    {
-        Column,
-        Row
-    };
 
     template <typename Type, int Size, VecOrient Orient = VecOrient::Column>
     class Vec : public Mat<
@@ -346,24 +407,32 @@ namespace linalg
         Type &operator()(int i)
         {
 #pragma HLS inline
-            return this->data()[i];
+            return this->get_(i);
         }
 
         Type operator()(int i) const
         {
 #pragma HLS inline
-            return this->data()[i];
+            return this->get_(i);
         }
 
-        Type dot(Vec &rhs)
+        Type dot(Vec &rhs) const
         {
             Type acc = Type(0);
-            for (int i = 0; i < 6; i++)
-                acc += this->data()[i] * rhs(i);
+            for (int i = 0; i < Size; i++)
+                acc += (*this)(i)*rhs(i);
             return acc;
         }
-    };
 
+        Type norm() const
+        {
+            Type acc = Type(0);
+            for (int i = 0; i < Size; i++)
+                acc += (*this)(i) * (*this)(i);
+            return math::sqrt(acc);
+        }
+    };
+    /*
     template <typename Type>
     class Vec1 : public Mat<Type, 1, 1>
     {
@@ -374,146 +443,67 @@ namespace linalg
             (*this)(0) = x;
         }
     };
-
-    /*
-    template <typename Type>
-    class Vec2 : public Mat<Type, 2, 1>
+    */
+    template <typename Type, VecOrient Orient = VecOrient::Column>
+    class Vec2 : public Vec<Type, 2, Orient>
     {
     public:
-        Vec2() : Mat<Type, 2, 1>() {}
-        Vec2(const Mat<Type, 2, 1> &mat)
-            : Mat<Type, 2, 1>(mat) // call the base-class copy constructor
+        Vec2() {}
+        template <typename Type2>
+        Vec2(const Mat<Type2,
+                       (Orient == VecOrient::Column ? 2 : 1),
+                       (Orient == VecOrient::Column ? 1 : 2)> &mat)
+            : Vec<Type, 2>(mat) // call the base-class copy constructor
         {
-        }
-        Vec2(Type x, Type y)
-        {
-            (*this)(0) = x;
-            (*this)(1) = y;
         }
 
+        template <typename Type1, typename Type2>
+        Vec2(Type1 x, Type2 y)
+        {
+            (*this)(0) = Type(x);
+            (*this)(1) = Type(y);
+        }
+        /*
         template <typename OtherType>
         Vec2 operator*(const OtherType &s) const
         {
-#pragma HLS inline
+            // #pragma HLS inline
 
             Vec2 result;
             result(0) = (*this)(0) * s;
             result(1) = (*this)(1) * s;
             return result;
         }
-
-        Vec2 operator+(const Vec2 &rhs) const
-        {
-            Vec2 result;
-            result(0) = (*this)(0) + rhs(0);
-            result(1) = (*this)(1) + rhs(1);
-            return result;
-        }
-
-        Vec2 operator-(const Vec2 &rhs) const
-        {
-            Vec2 result;
-            result(0) = (*this)(0) - rhs(0);
-            result(1) = (*this)(1) - rhs(1);
-            return result;
-        }
+        */
 
         Type cross(const Vec2 &rhs) const
         {
+            // #pragma HLS inline
+
             return (*this)(0) * rhs(1) - (*this)(1) * rhs(0);
-        }
-    };
-    */
-
-    template <typename Type>
-    class Vec2
-    {
-    public:
-        Vec2() {}
-        Vec2(Type x, Type y)
-        {
-            // #pragma HLS inline
-            x_ = x;
-            y_ = y;
-        }
-
-        Type &operator()(int r)
-        {
-            // #pragma HLS inline
-            if (r == 0)
-                return x_;
-            else
-                return y_;
-        }
-
-        Type operator()(int r) const
-        {
-            // #pragma HLS inline
-            if (r == 0)
-                return x_;
-            else
-                return y_;
-        }
-
-        template <typename OtherType>
-        Vec2 operator*(const OtherType &s) const
-        {
-            // #pragma HLS inline
-
-            Vec2 result;
-            result.x_ = x_ * s;
-            result.y_ = y_ * s;
-            return result;
-        }
-
-        Vec2 operator+(const Vec2 &rhs) const
-        {
-            // #pragma HLS inline
-
-            Vec2 result;
-            result.x_ = x_ + rhs.x_;
-            result.y_ = y_ + rhs.y_;
-            return result;
-        }
-
-        Vec2 operator-(const Vec2 &rhs) const
-        {
-            // #pragma HLS inline
-
-            Vec2 result;
-            result.x_ = x_ - rhs.x_;
-            result.y_ = y_ - rhs.y_;
-            return result;
-        }
-
-        Type cross(const Vec2 &rhs) const
-        {
-            // #pragma HLS inline
-
-            return x_ * rhs.y_ - y_ * rhs.x_;
         }
 
     private:
-        Type x_;
-        Type y_;
     };
 
-    template <typename Type>
-    Vec2<Type> operator*(Type s, const Vec2<Type> &m)
-    {
-        // #pragma HLS inline
+    // template <typename Type>
+    // Vec2<Type> operator*(Type s, const Vec2<Type> &m)
+    // {
+    // #pragma HLS inline
 
-        return m * s;
-    }
+    //    return m * s;
+    //}
 
-    template <typename Type>
-    class Vec3 : public Vec<Type, 3>
+    template <typename Type, VecOrient Orient = VecOrient::Column>
+    class Vec3 : public Vec<Type, 3, Orient>
     {
     public:
         Vec3() : Vec<Type, 3>() {}
-        template <typename OtherType>
-        Vec3(const Mat<OtherType, 3, 1> &mat)
-            : VecC<Type, 3>(mat) // call the base-class copy constructor
+        template <typename Type2>
+        Vec3(const Mat<Type2,
+                       (Orient == VecOrient::Column ? 3 : 1),
+                       (Orient == VecOrient::Column ? 1 : 3)> &mat)
+            : Vec<Type, 3>(mat) // call the base-class copy constructor
         {
         }
 
@@ -525,13 +515,14 @@ namespace linalg
             (*this)(2) = Type(z);
         }
 
-        bool operator==(const Mat<Type, 3, 1> &other) const
-        {
-            return ((*this)(0) == other(0, 0) &&
-                    (*this)(1) == other(1, 0) &&
-                    (*this)(2) == other(2, 0));
-        }
+        // bool operator==(const Mat<Type, 3, 1> &other) const
+        //{
+        //     return ((*this)(0) == other(0, 0) &&
+        //             (*this)(1) == other(1, 0) &&
+        //             (*this)(2) == other(2, 0));
+        // }
 
+        /*
         template <typename OtherType>
         Vec3 operator*(const Mat<OtherType, 3, 1> &other) const
         {
@@ -591,14 +582,15 @@ namespace linalg
             return result;
         }
 
-        template <typename OtherType>
-        Type dot(const VecC<OtherType, 3> &other)
+        // template <typename OtherType>
+        Type dot(const Vec3 &other)
         {
             return (*this)(0) * other(0) + (*this)(1) * other(1) + (*this)(2) * other(2);
         }
+        */
 
-        template <typename OtherType>
-        Vec3 cross(const Mat<OtherType, 3, 1> &other) const
+        template <typename Type2>
+        Vec3 cross(const Vec<Type2, 3> &other) const
         {
             Vec3 result;
             result(0) = (*this)(1) * other(2) - (*this)(2) * other(1);
@@ -609,12 +601,12 @@ namespace linalg
 
         Vec3 normalized() const
         {
-            Type norm = math::sqrt((*this)(0) * (*this)(0) + (*this)(1) * (*this)(1) + (*this)(2) * (*this)(2));
+            Type norm = this->norm();
             return Vec3((*this)(0) / norm, (*this)(1) / norm, (*this)(2) / norm);
         }
     };
 
-    template <typename Type>
+    template <typename Type, VecOrient Orient = VecOrient::Column>
     class Vec4 : public Vec<Type, 4>
     {
     public:
@@ -651,11 +643,11 @@ namespace linalg
         }
     };
 
-    template <typename Type>
-    class Vec6 : public VecC<Type, 6>
+    template <typename Type, VecOrient Orient = VecOrient::Column>
+    class Vec6 : public Vec<Type, 6>
     {
     public:
-        Vec6() : VecC<Type, 6>() {}
+        Vec6() : Vec<Type, 6>() {}
         Vec6(Type x, Type y, Type z, Type a, Type b, Type c)
         {
             (*this)(0) = x;
@@ -666,24 +658,16 @@ namespace linalg
             (*this)(5) = c;
         }
         Vec6(const Mat<Type, 6, 1> &vec)
-            : VecC<Type, 6>(vec) // call the base-class copy constructor
+            : Vec<Type, 6>(vec) // call the base-class copy constructor
         {
-        }
-
-        Type dot(Vec6 &rhs)
-        {
-            Type acc = Type(0);
-            for (int i = 0; i < 6; i++)
-                acc += this->get_(i, 0) * rhs(i);
-            return acc;
         }
     };
 
-    template <typename Type>
-    class Vec8 : public VecC<Type, 8>
+    template <typename Type, VecOrient Orient = VecOrient::Column>
+    class Vec8 : public Vec<Type, 8>
     {
     public:
-        Vec8() : VecC<Type, 8>() {}
+        Vec8() : Vec<Type, 8>() {}
         Vec8(Type x, Type y, Type z, Type a, Type b, Type c, Type d, Type e)
         {
             (*this)(0) = x;
@@ -859,13 +843,13 @@ namespace linalg
         mat4_mult_loop_c:
             for (int c = 0; c < 4; c++)
             {
-                Type acc = Type(0.0f);
+                Type acc = Type(0);
                 // #pragma HLS PIPELINE off
             mat4_mult_loop_k:
                 for (int k = 0; k < 4; k++)
                 {
                     // #pragma HLS PIPELINE off
-                    acc += this->get_(c, k) * rhs(k);
+                    acc += (*this)(c, k) * rhs(k);
                 }
                 result(c) = acc;
             }
@@ -895,7 +879,7 @@ namespace linalg
                     for (int k = 0; k < 4; k++)
                     {
                         // #pragma HLS PIPELINE off
-                        acc += this->get_(r, k) * rhs(k, c);
+                        acc += (*this)(r, k) * rhs(k, c);
                     }
                     result(r, c) = acc;
                 }

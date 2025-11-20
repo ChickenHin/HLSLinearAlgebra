@@ -9,7 +9,7 @@ namespace linalg
     {
     public:
         using MatN = Mat<Type, size, size>;
-        using VecN = VecC<Type, size>;
+        using VecN = Vec<Type, size>;
 
         LDLT() {}
 
@@ -145,18 +145,18 @@ namespace linalg
 
         // Solve A x = b for x, given b.
         // Assumes compute() has been called.
-        VecxC<Type> solve(const VecxC<Type> &b)
+        Vecx<Type> solve(const Vecx<Type> &b)
         {
             // 1) Solve L y = b (Forward substitution)
-            Matx<Type> y;
+            Vecx<Type> y;
             forward_substitution(L_, b, y);
 
             // 3) Solve D z = y
-            Matx<Type> z;
+            Vecx<Type> z;
             diagonal_solve(D_, y, z);
 
             // 4) Solve L^T x = z
-            Matx<Type> x;
+            Vecx<Type> x;
             back_substitution_transpose(L_, z, x);
 
             return x;
@@ -167,7 +167,7 @@ namespace linalg
         {
             // Initialize L to identity and D to zero.
             L_ = Matx<Type>::Identity(size_, size_);
-            D_ = VecxC<Type>::Zero(size_);
+            D_ = Vecx<Type>::Zero(size_);
 
             for (int i = 0; i < size_; ++i)
             {
@@ -203,7 +203,7 @@ namespace linalg
 
         // Forward substitution for L y = b
         // L is lower triangular with diagonal = 1.0
-        void forward_substitution(const Matx<Type> &L, const VecxC<Type> &b, VecxC<Type> &y)
+        void forward_substitution(const Matx<Type> &L, const Vecx<Type> &b, Vecx<Type> &y)
         {
             for (int i = 0; i < size_; ++i)
             {
@@ -219,7 +219,7 @@ namespace linalg
 
         // Diagonal solve for D z = y
         // D is diagonal, stored as a vector. z[i] = y[i] / D[i]
-        void diagonal_solve(const VecxC<Type> &D, const VecxC<Type> &y, VecxC<Type> &z)
+        void diagonal_solve(const Vecx<Type> &D, const Vecx<Type> &y, Vecx<Type> &z)
         {
             for (int i = 0; i < size_; ++i)
             {
@@ -229,7 +229,7 @@ namespace linalg
 
         // Back substitution for L^T x = z
         // L is lower-triangular, so L^T is upper-triangular.
-        void back_substitution_transpose(const Matx<Type> &L, const VecxC<Type> &z, VecxC<Type> &x)
+        void back_substitution_transpose(const Matx<Type> &L, const Vecx<Type> &z, Vecx<Type> &x)
         {
             for (int i = size_ - 1; i >= 0; --i)
             {
@@ -245,7 +245,7 @@ namespace linalg
 
         Matx<Type> A_;
         Matx<Type> L_;
-        VecxC<Type> D_; // Store diagonal of D as a vector
+        Vecx<Type> D_; // Store diagonal of D as a vector
         int size_;
     };
 }

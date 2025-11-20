@@ -4,6 +4,7 @@
 #include <cassert> // for assert
 #include <memory>  // for unique_ptr
 
+#include "common.h"
 // #include <cmath>
 
 namespace linalg
@@ -16,10 +17,10 @@ namespace linalg
     class Matx
     {
     public:
-        // Matx()
-        //     : data_(nullptr), rows_(0), cols_(0)
-        //{
-        // }
+        Matx()
+            : data_(nullptr), rows_(0), cols_(0)
+        {
+        }
 
         Matx(int rows, int cols)
             : data_(rows * cols > 0 ? std::make_unique<Type[]>(rows * cols) : nullptr), rows_(rows), cols_(cols)
@@ -111,7 +112,7 @@ namespace linalg
             Matx<Type> result = Zero(cols_, rows_);
             for (int r = 0; r < rows_; r++)
                 for (int c = 0; c < cols_; c++)
-                    result(c, r) = get_(r, c);
+                    result(c, r) = (*this)(r, c);
             return result;
         }
 
@@ -128,7 +129,7 @@ namespace linalg
                     Type acc = 0.0;
                     for (int k = 0; k < cols_; k++)
                     {
-                        acc += get_(r, k) * rhs(k, c);
+                        acc += (*this)(r, k) * rhs(k, c);
                     }
                     result(r, c) = acc;
                 }
@@ -154,7 +155,7 @@ namespace linalg
             Matx result(rows_, cols_);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
-                    result(r, c) = get_(r, c) - other(r, c);
+                    result(r, c) = (*this)(r, c) - other(r, c);
             return result;
         }
 
@@ -176,7 +177,7 @@ namespace linalg
             Type result = Type(0);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
-                    result += get_(r, c) * rhs(r, c);
+                    result += (*this)(r, c) * rhs(r, c);
             return result;
         }
 
@@ -187,7 +188,7 @@ namespace linalg
             Matx result(rows_, cols_);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
-                    result(r, c) = get_(r, c) + other(r, c);
+                    result(r, c) = (*this)(r, c) + other(r, c);
             return result;
         }
 
@@ -197,7 +198,7 @@ namespace linalg
             Matx result(rows_, cols_);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
-                    result(r, c) = get_(r, c) * s;
+                    result(r, c) = (*this)(r, c) * s;
             return result;
         }
 
@@ -206,7 +207,7 @@ namespace linalg
             Matx result(rows_, cols_);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
-                    result(r, c) = -get_(r, c);
+                    result(r, c) = -(*this)(r, c);
             return result;
         }
 
@@ -215,7 +216,7 @@ namespace linalg
             Matx result(rows_, cols_);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
-                    result(r, c) = std::sqrt(get_(r, c));
+                    result(r, c) = std::sqrt((*this)(r, c));
             return result;
         }
 
@@ -232,38 +233,33 @@ namespace linalg
         // Element accessors (row, col)
         Type &operator()(int r, int c)
         {
-            return get_(r, c);
+            //  column major
+            //   int add = r * _cols + c;
+            //  row major
+            int add = c * rows_ + r;
+
+            return get_(add);
         }
 
         Type operator()(int r, int c) const
         {
-            return get_(r, c);
+            //  column major
+            //  int add = r * _cols + c;
+            //  row major
+            int add = c * rows_ + r;
+
+            return get_(add);
         }
 
-        // For vector-like usage (assumes single column, i.e. col = 0)
-        Type &operator()(int r)
-        {
-            assert(cols_ == 1);
+        // Type *data()
+        //{
+        //     return data_;
+        // }
 
-            return get_(r, 0);
-        }
-
-        Type operator()(int r) const
-        {
-            assert(cols_ == 1);
-
-            return get_(r, 0);
-        }
-
-        Type *data()
-        {
-            return data_;
-        }
-
-        const Type *data() const
-        {
-            return data_;
-        }
+        // const Type *data() const
+        //{
+        //    return data_;
+        // }
 
         // Dimension accessors
         int rows() const { return rows_; }
@@ -271,20 +267,14 @@ namespace linalg
         int size() const { return rows_ * cols_; }
 
     protected:
-        Type &get_(int r, int c)
+        Type &get_(int add)
         {
-            //  column major
-            //   return data_[r * _cols + c];
-            //  row major
-            return data_[c * rows_ + r];
+            return data_[add];
         }
 
-        Type get_(int r, int c) const
+        Type get_(int add) const
         {
-            //  column major
-            //   return data_[r * _cols + c];
-            //  row major
-            return data_[c * rows_ + r];
+            return data_[add];
         }
 
         std::unique_ptr<Type[]> data_;
@@ -317,63 +307,44 @@ namespace linalg
         return result;
     }
 
-    template <typename Type>
-    class VecxR : public Matx<Type>
+    template <typename Type, VecOrient Orient = VecOrient::Column>
+    class Vecx : public Matx<Type>
     {
     public:
-        VecxR(int cols) : Matx<Type>(1, cols) {}
-        // VecR(const Matx<Type> &mat)
-        //     : Matx<Type>(mat) // call the base-class copy constructor
-        //{
-        // }
+        using Base = Matx<Type>;
 
-        static VecxR Zero(int cols)
+        Vecx() : Base() {}
+        Vecx(int size) : Base((Orient == VecOrient::Column ? size : 1),
+                              (Orient == VecOrient::Column ? 1 : size)) {}
+        Vecx(const Base &mat) : Base(mat) {}
+
+        static Vecx Zero(int size)
         {
-            VecxR result(cols);
-            for (int i = 0; i < cols; i++)
+            Vecx result(size);
+            for (int i = 0; i < size; i++)
                 result(i) = Type(0);
             return result;
         }
 
-        // Element accessors (row, col)
-        Type &operator()(int c)
+        // 1D indexing, orientation-agnostic
+        Type &operator()(int i)
         {
-            return this->get_(0, c);
+#pragma HLS inline
+            return this->get_(i);
         }
 
-        Type operator()(int c) const
+        Type operator()(int i) const
         {
-            return this->get_(0, c);
-        }
-    };
-
-    template <typename Type>
-    class VecxC : public Matx<Type>
-    {
-    public:
-        VecxC(int rows) : Matx<Type>(rows, 1) {}
-        // VecxC(const Matx<Type> &mat)
-        //     : Matx<Type>(mat) // call the base-class copy constructor
-        // {
-        //}
-
-        static VecxC Zero(int rows)
-        {
-            VecxC result(rows);
-            for (int i = 0; i < rows; i++)
-                result(i) = Type(0);
-            return result;
+#pragma HLS inline
+            return this->get_(i);
         }
 
-        // Element accessors (row, col)
-        Type &operator()(int r)
+        Type dot(Vecx &rhs)
         {
-            return this->get_(r, 0);
-        }
-
-        Type operator()(int r) const
-        {
-            return this->get_(r, 0);
+            Type acc = Type(0);
+            for (int i = 0; i < this->size_; i++)
+                acc += (*this)(i)*rhs(i);
+            return acc;
         }
     };
 }
