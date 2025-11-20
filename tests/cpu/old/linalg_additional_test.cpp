@@ -258,11 +258,11 @@ TEST_F(LinalgAdditionalTest, LDLTResidualCheck)
         A(i, i) += 1e-6; // improve conditioning
 
     linalg::Mat<Type, N, 1> b;
-    b(0) = 1.0;
-    b(1) = -2.0;
-    b(2) = 3.0;
+    b(0, 0) = 1.0;
+    b(1, 0) = -2.0;
+    b(2, 0) = 3.0;
 
-    LDLT<Type, N> solver;
+    linalg::LDLT<Type, N> solver;
     solver.compute(A);
     auto x = solver.solve(b);
 

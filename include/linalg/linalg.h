@@ -237,7 +237,7 @@ namespace linalg
             for (int c = 0; c < _cols; c++)
             mat_norm_loop_r:
                 for (int r = 0; r < _rows; r++)
-                    sum += get_(r, c) * get_(r, c);
+                    sum += (*this)(r, c) * (*this)(r, c);
             return math::sqrt(sum);
         }
 
@@ -640,6 +640,25 @@ namespace linalg
         operator Vec3<Type>() const
         {
             return Vec3<Type>((*this)(0), (*this)(1), (*this)(2));
+        }
+    };
+
+    template <typename Type, VecOrient Orient = VecOrient::Column>
+    class Vec5 : public Vec<Type, 5>
+    {
+    public:
+        Vec5() : Vec<Type, 5>() {}
+        Vec5(Type x, Type y, Type z, Type a, Type b)
+        {
+            (*this)(0) = x;
+            (*this)(1) = y;
+            (*this)(2) = z;
+            (*this)(3) = a;
+            (*this)(4) = b;
+        }
+        Vec5(const Mat<Type, 5, 1> &vec)
+            : Vec<Type, 5>(vec) // call the base-class copy constructor
+        {
         }
     };
 

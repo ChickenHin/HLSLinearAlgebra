@@ -73,20 +73,20 @@ TEST_F(LinalgTest, VectorOperations) {
     linalg::Mat<double, 4, 1> vec2;
     
     // Initialize vectors using single-index operator for vectors
-    vec1(0) = 1.0;
-    vec1(1) = 2.0;
-    vec1(2) = 3.0;
-    vec1(3) = 4.0;
+    vec1(0, 0) = 1.0;
+    vec1(1, 0) = 2.0;
+    vec1(2, 0) = 3.0;
+    vec1(3, 0) = 4.0;
     
-    vec2(0) = 4.0;
-    vec2(1) = 5.0;
-    vec2(2) = 6.0;
+    vec2(0, 0) = 4.0;
+    vec2(1, 0) = 5.0;
+    vec2(2, 0) = 6.0;
     
     // Test vector addition
     auto sum = vec1 + vec2;
-    EXPECT_NEAR(sum(0), 5.0, 1e-10);
-    EXPECT_NEAR(sum(1), 7.0, 1e-10);
-    EXPECT_NEAR(sum(2), 9.0, 1e-10);
+    EXPECT_NEAR(sum(0, 0), 5.0, 1e-10);
+    EXPECT_NEAR(sum(1, 0), 7.0, 1e-10);
+    EXPECT_NEAR(sum(2, 0), 9.0, 1e-10);
 }
 
 int main(int argc, char **argv) {

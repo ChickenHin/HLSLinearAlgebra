@@ -86,7 +86,7 @@ TEST(LDLTSolverTest, Solve3x3)
     using Type = double;
     const int size = 3;
 
-    LDLT<Type, size> solver;
+    linalg::LDLT<Type, size> solver;
     linalg::Mat<Type, size, size> A;
     A(0, 0) = 4;
     A(0, 1) = 12;
@@ -99,14 +99,14 @@ TEST(LDLTSolverTest, Solve3x3)
     A(2, 2) = 98;
 
     linalg::Mat<Type, size, 1> b;
-    b(0) = 0;
-    b(1) = 6;
-    b(2) = 39;
+    b(0, 0) = 0;
+    b(1, 0) = 6;
+    b(2, 0) = 39;
 
     solver.compute(A);
     linalg::Mat<Type, size, 1> x = solver.solve(b);
 
-    EXPECT_NEAR(x(0), 1.0, 1e-9);
-    EXPECT_NEAR(x(1), 1.0, 1e-9);
-    EXPECT_NEAR(x(2), 1.0, 1e-9);
+    EXPECT_NEAR(x(0, 0), 1.0, 1e-9);
+    EXPECT_NEAR(x(1, 0), 1.0, 1e-9);
+    EXPECT_NEAR(x(2, 0), 1.0, 1e-9);
 }

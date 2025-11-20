@@ -144,7 +144,7 @@ namespace linalg
             Matx result(rows_, cols_);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
-                    result(r, c) = get_(r, c) + other(r, c);
+                    result(r, c) = (*this)(r, c) + other(r, c);
             return result;
         }
 
@@ -165,7 +165,7 @@ namespace linalg
             OutType result = Type(0);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
-                    result += OutType(get_(r, c) * rhs(r, c));
+                    result += OutType((*this)(r, c) * rhs(r, c));
             return result;
         }
 
@@ -226,7 +226,7 @@ namespace linalg
             Type sum = Type(0);
             for (int c = 0; c < cols_; c++)
                 for (int r = 0; r < rows_; r++)
-                    sum += get_(r, c) * get_(r, c);
+                    sum += (*this)(r, c) * (*this)(r, c);
             return std::sqrt(sum);
         }
 
