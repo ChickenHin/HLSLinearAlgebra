@@ -26,15 +26,15 @@ namespace linalg
         Vecx<Type> solve(const Vecx<Type> &b)
         {
             // 1) Solve L y = b (Forward substitution)
-            Vecx<Type> y;
+            Vecx<Type> y(size_);
             forward_substitution(L_, b, y);
 
             // 3) Solve D z = y
-            Vecx<Type> z;
+            Vecx<Type> z(size_);
             diagonal_solve(D_, y, z);
 
             // 4) Solve L^T x = z
-            Vecx<Type> x;
+            Vecx<Type> x(size_);
             back_substitution_transpose(L_, z, x);
 
             return x;
@@ -44,8 +44,8 @@ namespace linalg
         void ldlt_decompose()
         {
             // Initialize L to identity and D to zero.
-            L_ = Matx<Type>::Identity(size_, size_);
-            D_ = Vecx<Type>::Zero(size_);
+            L_.setIdentity();
+            D_.setZero();
 
             for (int i = 0; i < size_; ++i)
             {

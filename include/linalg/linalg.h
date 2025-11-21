@@ -75,6 +75,13 @@ namespace linalg
             }
         }
 
+        void setIdentity()
+        {
+            setZero();
+            for (int i = 0; i < _cols; i++)
+                (*this)(i, i) = Type(1);
+        }
+
         static Mat Zero()
         {
             Mat result;

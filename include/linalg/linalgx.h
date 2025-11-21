@@ -74,9 +74,15 @@ namespace linalg
         {
             assert(rows_ * cols_ > 0);
 
-            for (int i = 0; i < rows_ * cols_; i++)
+        mat_const_other_loop:
+            for (int y = 0; y < rows_; y++)
             {
-                data_[i] = Type(0);
+            mat_const_other_loop_x:
+                for (int x = 0; x < cols_; x++)
+                {
+                    // #pragma HLS UNROLL
+                    (*this)(y, x) = Type(0);
+                }
             }
         }
 
@@ -85,8 +91,9 @@ namespace linalg
             assert(rows_ == cols_);
             assert(rows_ * cols_ > 0);
 
+            setZero();
             for (int i = 0; i < cols_; i++)
-                data_[i * rows_ + i] = Type(1);
+                (*this)(i, i) = Type(1);
         }
 
         static Matx Zero(int rows, int cols)
@@ -311,7 +318,10 @@ namespace linalg
 
         Vecx() : Base() {}
         Vecx(int size) : Base((Orient == VecOrient::Column ? size : 1),
-                              (Orient == VecOrient::Column ? 1 : size)) {}
+                              (Orient == VecOrient::Column ? 1 : size))
+        {
+            size_ = size;
+        }
         Vecx(const Base &mat) : Base(mat) {}
 
         static Vecx Zero(int size)
@@ -338,9 +348,12 @@ namespace linalg
         Type dot(Vecx &rhs)
         {
             Type acc = Type(0);
-            for (int i = 0; i < this->size_; i++)
+            for (int i = 0; i < size_; i++)
                 acc += (*this)(i)*rhs(i);
             return acc;
         }
+
+    private:
+        int size_;
     };
 }
