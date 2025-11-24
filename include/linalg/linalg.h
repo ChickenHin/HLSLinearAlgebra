@@ -646,6 +646,7 @@ namespace linalg
             (*this)(3) = w;
         }
 
+        /*
         Vec4(Vec3<Type> v, Type w)
         {
             (*this)(0) = v(0);
@@ -663,6 +664,7 @@ namespace linalg
         {
             return Vec3<Type>((*this)(0), (*this)(1), (*this)(2));
         }
+        */
     };
 
     template <typename Type, VecOrient Orient = VecOrient::Column>
