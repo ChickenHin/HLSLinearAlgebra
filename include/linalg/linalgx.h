@@ -320,9 +320,10 @@ namespace linalg
         Vecx(int size) : Base((Orient == VecOrient::Column ? size : 1),
                               (Orient == VecOrient::Column ? 1 : size))
         {
-            size_ = size;
         }
-        Vecx(const Base &mat) : Base(mat) {}
+        Vecx(const Base &mat) : Base(mat)
+        {
+        }
 
         static Vecx Zero(int size)
         {
@@ -348,12 +349,11 @@ namespace linalg
         Type dot(Vecx &rhs)
         {
             Type acc = Type(0);
-            for (int i = 0; i < size_; i++)
+            for (int i = 0; i < this->size(); i++)
                 acc += (*this)(i)*rhs(i);
             return acc;
         }
 
     private:
-        int size_;
     };
 }
