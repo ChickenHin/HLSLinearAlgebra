@@ -367,10 +367,9 @@ namespace linalg
     }
 
     template <typename Type, int rows, int cols>
-    Mat<Type, rows, cols> operator*=(const Mat<Type, rows, cols> &m, Type s)
+    void operator*=(Mat<Type, rows, cols> &m, Type s)
     {
         // #pragma HLS INLINE
-        Mat<Type, rows, cols> result;
     mat_fmult_loop_c:
         for (int c = 0; c < cols; c++)
         {
@@ -380,17 +379,15 @@ namespace linalg
                 // #pragma HLS PIPELINE II = 1
 
                 // #pragma HLS LOOP_FLATTEN
-                result(r, c) = m(r, c) * s;
+                m(r, c) = m(r, c) * s;
             }
         }
-        return result;
     }
 
     template <typename Type, int rows, int cols>
-    Mat<Type, rows, cols> operator/=(const Mat<Type, rows, cols> &m, Type s)
+    void operator/=(Mat<Type, rows, cols> &m, Type s)
     {
         // #pragma HLS INLINE
-        Mat<Type, rows, cols> result;
     mat_fmult_loop_c:
         for (int c = 0; c < cols; c++)
         {
@@ -400,10 +397,9 @@ namespace linalg
                 // #pragma HLS PIPELINE II = 1
 
                 // #pragma HLS LOOP_FLATTEN
-                result(r, c) = m(r, c) / s;
+                m(r, c) = m(r, c) / s;
             }
         }
-        return result;
     }
 
     //============================================================
