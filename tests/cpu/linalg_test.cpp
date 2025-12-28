@@ -179,8 +179,10 @@ TEST(MatFixedEigen, ScalarMultiplyDivideAndUnaryMinus)
     MatRC S1_m = A_m * s;
     MatRC S2_m = s * A_m;
     MatRC Q_m  = A_m / s;
-    MatRC S3_m = (A_m *= s);
-    MatRC Q2_m = (A_m /= s);
+    MatRC S3_m = A_m;
+    S3_m *= s;
+    MatRC Q2_m = A_m;
+    Q2_m /= s;
 
     ERC S_e = A_e * s;
     ERC Q_e = A_e / s;
