@@ -9,7 +9,7 @@ namespace linalg
     {
     public:
         LDLTx(int size)
-            : size_(size), A_(size, size), L_(size, size), D_(size)
+            : size_(size), A_(size, size), L_(size, size), D_(size), invD_(size)
         {
         }
 
@@ -20,7 +20,7 @@ namespace linalg
             A_ = _A;
             ldlt_decompose();
         }
-
+        /*
         // Solve A x = b for x, given b.
         // Assumes compute() has been called.
         Vecx<Type> solve(const Vecx<Type> &b)
@@ -39,13 +39,44 @@ namespace linalg
 
             return x;
         }
+        */
+
+        Vecx<Type> solve(const Vecx<Type> &b)
+        {
+            Vecx<Type> x = b; // reuse as workspace
+
+            // Forward: L y = b  (x becomes y)
+            for (int i = 0; i < size_; ++i)
+            {
+                Type sum = x(i);
+                for (int j = 0; j < i; ++j)
+                    sum -= L_(i, j) * x(j);
+                x(i) = sum;
+            }
+
+            // Diagonal: D z = y  (x becomes z)
+            for (int i = 0; i < size_; ++i)
+                x(i) *= invD_(i); // precompute invD_
+
+            // Backward: L^T x = z (x becomes solution)
+            for (int i = size_ - 1; i >= 0; --i)
+            {
+                Type sum = x(i);
+                for (int j = i + 1; j < size_; ++j)
+                    sum -= L_(j, i) * x(j);
+                x(i) = sum;
+            }
+
+            return x;
+        }
 
     private:
         void ldlt_decompose()
         {
             // Initialize L to identity and D to zero.
             L_.setIdentity();
-            D_.setZero();
+            // D_.setZero();
+            // invD_.setZero();
 
             for (int i = 0; i < size_; ++i)
             {
@@ -64,7 +95,7 @@ namespace linalg
                 }
 
                 // 2) Compute L[j][i] for j = i+1..n-1
-                Type inv_Di = Type(1) / D_(i);
+                invD_(i) = Type(1) / D_(i);
                 for (int j = i + 1; j < size_; ++j)
                 {
                     Type val = A_(j, i);
@@ -74,7 +105,7 @@ namespace linalg
                         val -= L_(j, k) * L_(i, k) * D_(k);
                     }
                     // L[j][i] = (A[j][i] - ...) / D[i]
-                    L_(j, i) = val * inv_Di;
+                    L_(j, i) = val * invD_(i);
                 }
             }
         }
@@ -123,7 +154,8 @@ namespace linalg
 
         Matx<Type> A_;
         Matx<Type> L_;
-        Vecx<Type> D_; // Store diagonal of D as a vector
+        Vecx<Type> D_;    // Store diagonal of D as a vector
+        Vecx<Type> invD_; // Store inverse of diagonal of D as a vector
         int size_;
     };
 }
