@@ -20,7 +20,7 @@ namespace linalg
             A_ = _A;
             ldlt_decompose();
         }
-        /*
+
         // Solve A x = b for x, given b.
         // Assumes compute() has been called.
         Vecx<Type> solve(const Vecx<Type> &b)
@@ -39,8 +39,8 @@ namespace linalg
 
             return x;
         }
-        */
 
+        /*
         Vecx<Type> solve(const Vecx<Type> &b)
         {
             Vecx<Type> x = b; // reuse as workspace
@@ -69,7 +69,7 @@ namespace linalg
 
             return x;
         }
-
+        */
     private:
         void ldlt_decompose()
         {
