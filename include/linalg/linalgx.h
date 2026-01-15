@@ -254,15 +254,15 @@ namespace linalg
             return get_(add);
         }
 
-        // Type *data()
-        //{
-        //     return data_;
-        // }
+        Type *data()
+        {
+            return data_.get();
+        }
 
-        // const Type *data() const
-        //{
-        //    return data_;
-        // }
+        const Type *data() const
+        {
+            return data_.get();
+        }
 
         // Dimension accessors
         int rows() const { return rows_; }
