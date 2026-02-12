@@ -1154,9 +1154,9 @@ namespace linalg
             return SO3(R);
         }
 
-        static Vec3<Type> log(const SO3<Type> &R)
+        Vec3<Type> log() const
         {
-            const Quaternion<Type> &q = R.unit_quaternion();
+            const Quaternion<Type> &q = quaternion_;
 
             Type qw = q.w();
             Type qx = q.x();
@@ -1469,7 +1469,7 @@ namespace linalg
             Vec6<Type> xi;
 
             // Rotation part
-            Vec3<Type> phi = SO3<Type>::log(so3_);
+            Vec3<Type> phi = so3_.log();
 
             // Translation part: rho = J_l(phi)^{-1} * t
             Mat3<Type> J = so3LeftJacobian(phi);
