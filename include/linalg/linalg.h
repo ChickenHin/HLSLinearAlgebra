@@ -206,6 +206,18 @@ namespace linalg
                 }
         }
 
+        void operator-=(const Mat &other)
+        {
+        mat_add_loop_c:
+            for (int c = 0; c < _cols; c++)
+            mat_add_loop_r:
+                for (int r = 0; r < _rows; r++)
+                {
+                    Type val = (*this)(r, c) - other(r, c);
+                    (*this)(r, c) = val;
+                }
+        }
+
         Mat operator-(const Mat &other) const
         {
             Mat result;
@@ -214,6 +226,29 @@ namespace linalg
             mat_sub_loop_r:
                 for (int r = 0; r < _rows; r++)
                     result(r, c) = (*this)(r, c) - other(r, c);
+            return result;
+        }
+
+        Mat cwiseMin(const Mat &other) const
+        {
+            Mat result;
+        mat_min_loop_c:
+            for (int c = 0; c < _cols; c++)
+            mat_min_loop_r:
+                for (int r = 0; r < _rows; r++)
+                    result(r, c) = (*this)(r, c) < other(r, c) ? (*this)(r, c) : other(r, c);
+            return result;
+        }
+
+        Mat cwiseMax(const Mat &other) const
+        {
+            Mat result;
+        mat_max_loop_c:
+            for (int c = 0; c < _cols; c++)
+            mat_max_loop_r:
+                for (int r = 0; r < _rows; r++)
+                    result(r, c) = (*this)(r, c) > other(r, c) ? (*this)(r, c)
+                                                               : other(r, c);
             return result;
         }
 
