@@ -11,6 +11,7 @@ namespace linalg
     class LDLT_LAPACK
     {
     public:
+        LDLT_LAPACK() : LDLT_LAPACK(0) {}
         explicit LDLT_LAPACK(int n) : n_(n), a_(n * n), ipiv_(n) {}
 
         // Factorize A (symmetric). Only one triangle is referenced; we use lower ('L').
@@ -51,7 +52,7 @@ namespace linalg
 
     private:
         int n_;
-        std::vector<Type> a_;        // factorized matrix (in-place)
+        std::vector<Type> a_;          // factorized matrix (in-place)
         std::vector<lapack_int> ipiv_; // pivots from SYTRF
     };
 

@@ -8,6 +8,11 @@ namespace linalg
     class LDLTx
     {
     public:
+        LDLTx()
+            : LDLTx(0)
+        {
+        }
+        
         LDLTx(int size)
             : size_(size), A_(size, size), L_(size, size), D_(size), invD_(size)
         {
