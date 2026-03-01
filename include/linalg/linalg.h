@@ -469,7 +469,7 @@ namespace linalg
             return this->get_(i);
         }
 
-        Type dot(Vec &rhs) const
+        Type dot(const Vec &rhs) const
         {
             Type acc = Type(0);
             for (int i = 0; i < Size; i++)
